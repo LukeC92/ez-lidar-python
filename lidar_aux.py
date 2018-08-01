@@ -3,7 +3,7 @@ import multiprocessing
 from urllib.parse import urlparse, urlencode
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
-import http.cookiejar as cookiejar
+import http.cookiejar
 import time
 import numpy as np
 from netCDF4 import Dataset
@@ -67,7 +67,7 @@ class aux_file(object):
 
     def initialise(self):
         try:
-            response = urllib2.urlopen(self.url+self.initial_data,timeout=self.timeout)
+            response = urlopen(self.url+self.initial_data,timeout=self.timeout)
             js=response.read()
             if(js):
                 dat=json.loads(js)
@@ -75,7 +75,7 @@ class aux_file(object):
                 self.flt_no=dat['flight_number'][0]
             else:
                 self.basetime=None
-        except(urllib2.HTTPError):
+        except(HTTPError):
             self.basetime=None
 
     @property
@@ -132,7 +132,7 @@ class aux_file(object):
         except AttributeError:
             last=0
         #print(self.paraurl+"&frm={:d}".format(last))
-        response = urllib2.urlopen(self.paraurl+"&frm={:d}".format(last),timeout=self.timeout)
+        response = urlopen(self.paraurl+"&frm={:d}".format(last),timeout=self.timeout)
         js=response.read()
         if(js):
             dat=json.loads(js)

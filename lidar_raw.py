@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import scipy.misc
 from collections import OrderedDict
 from lidar_aux import aux_file
-from io import BytesIO
+from io import StringIO
 
 class lidar_raw:
     """
