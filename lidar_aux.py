@@ -1,7 +1,9 @@
 import threading
 import multiprocessing
-import urllib2
-import cookielib
+from urllib.parse import urlparse, urlencode
+from urllib.request import urlopen, Request
+from urllib.error import HTTPError
+import http.cookiejar as cookiejar
 import time
 import numpy as np
 from netCDF4 import Dataset
