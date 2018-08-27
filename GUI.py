@@ -47,6 +47,7 @@ time_base = datetime_array[start:end]
 base_list = time_base.tolist()
 height_test = height_quick_maker(start, end)
 width = end - start
-plt.pcolormesh(time_test,height_test,z_test)
-
+c = plt.pcolormesh(time_test,height_test,z_test, norm=colors.LogNorm(vmin=0.000001, vmax=z_test.max()))
+print(z_test.max())
+plt.colorbar(c)
 plt.show()
