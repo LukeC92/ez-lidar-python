@@ -56,26 +56,26 @@ time_test = datetime_array[start:end]
 height_test = height_quick_maker(start, end)
 width = end - start
 c = plt.pcolormesh(time_test,height_test,z_test, norm=colors.LogNorm(vmin=0.000001, vmax=z_test.max()))
+print(c.get_array())
 print(z_test.max())
 plt.colorbar(c)
 
 
 
 class Index(object):
-    start = 2000
-    end = 2200
-
     def next(self, event):
-        start = 2000
-        end = 2200
-        start += 100
-        end += 100
-        z_test = z_maker(start, end)
-        time_test = datetime_array[start:end]
-        height_test = height_quick_maker(start, end)
-        c = plt.pcolormesh(time_test,height_test,z_test, norm=colors.LogNorm(vmin=0.000001, vmax=z_test.max()))
-        plt.colorbar(c)
-        plt.draw()
+        print(start)
+        print(c.get_array())
+        # start = 2000
+        # end = 2200
+        # start += 100
+        # end += 100
+        # z_test = z_maker(start, end)
+        # time_test = datetime_array[start:end]
+        # height_test = height_quick_maker(start, end)
+        # c = plt.pcolormesh(time_test,height_test,z_test, norm=colors.LogNorm(vmin=0.000001, vmax=z_test.max()))
+        # plt.colorbar(c)
+        # plt.draw()
 
     def prev(self, event):
         print("pooop")
