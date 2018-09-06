@@ -2,7 +2,7 @@ import lidar
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
-from matplotlib import colors, dates
+from matplotlib import colors, dates, ticker
 
 
 lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
@@ -14,7 +14,7 @@ height_correction = 1.5 * np.arange(12148)
 
 
 def z_maker(x, y):
-    return lidar_data.profile[0][x:y].data.clip(0)
+    return np.nan_to_num(lidar_data.profile[0][x:y].data.clip(0))
 
 def height_maker(x, y, z):
     altitude = lidar_data['Altitude (m)'][x:y].data
@@ -57,7 +57,7 @@ def plotter(start=2000, end=2200):
     # pcolor and pcolormesh could use time_tall
     z = z_maker(start, end)
     time = dates.epoch2num(lidar_data['Time'][start:end].data)
-    # time_tall = time_maker(start, end, z)
+    time_tall = time_maker(start, end, z)
     altitude = lidar_data['Altitude (m)'][start:end].data
     #altitude = full_altitude[start:end]
     height = height_maker(start, end, z)
@@ -66,15 +66,15 @@ def plotter(start=2000, end=2200):
     plt.ylabel('Height (m)')
     plt.xlabel('time')
     contour_p = plt.pcolormesh(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
-    # contour_p = plt.pcolormesh(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
-    # contour_p = plt.pcolormesh(time, height,z, vmax=0.0007)
-    # contour_p = plt.contour(time_tall, height,z, locator=ticker.LogLocator())
+    #contour_p = plt.pcolormesh(time_tall, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
+    #contour_p = plt.pcolormesh(time, height,z, vmax=0.0007)
+    #contour_p = plt.contourf(time_tall, height,z, locator=ticker.LogLocator())
     line_p = plt.plot(time, altitude, color='black', linewidth=2)
     myFmt = dates.DateFormatter('%H:%M')
     ax.xaxis.set_major_formatter(myFmt)
-    plt.colorbar(contour_p)
+    #plt.colorbar(contour_p)
 
-plotter(1000, 1200)
+plotter(551, 680)
 
 
 class Index(object):
