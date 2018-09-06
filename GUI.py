@@ -1,5 +1,13 @@
+# pcolor, pcolormesh, contour and contourf all seem relatively capable of plotting the data. My current
+# favourite is pcolormesh cause it's faster than some and looks decent. I seem to remember contour not doing
+# the colorbar properly.
+# If you switch to channel 2 the colorbar doesn't seem to work, I'm not sure why. I should look at the
+# channel 2 data.
+
+
 import lidar
 import numpy as np
+import numpy.ma as ma
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 from matplotlib import colors, dates, ticker
@@ -12,8 +20,12 @@ lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
 # full_altitude = lidar_data['Altitude (m)'][:].data
 height_correction = 1.5 * np.arange(12148)
 
-
+# using the mask option might avoid misrepresenting data, but it causes some warnings when using pcorlormesh
+# the warnings don't seem to happen with pcorlor, not sure about contourf
 def z_maker(x, y):
+    # data = lidar_data.profile[0][x:y].data.clip(0)
+    # data_m = ma.masked_invalid(data)
+    # return data_m
     return np.nan_to_num(lidar_data.profile[0][x:y].data.clip(0))
 
 def height_maker(x, y, z):
@@ -22,7 +34,9 @@ def height_maker(x, y, z):
     altitude_array = np.empty_like(z)
     for j in range(0,len(z[0])):
         altitude_array[:,j] = altitude[j] - height_correction
-    altitude_array = altitude_array.clip(0)
+    altitude_array = np.nan_to_num(altitude_array.clip(0))
+    #altitude_array = altitude_array.clip(0)
+    #height = ma.masked_invalid(altitude_array)
     return altitude_array
 
 def time_maker(x,y,z):
@@ -62,7 +76,7 @@ def plotter(start=2000, end=2200):
     #altitude = full_altitude[start:end]
     height = height_maker(start, end, z)
     #height = height_quick_maker(start, end)
-    plt.ylim(0, altitude.max() * 1.1)
+    plt.ylim(0, np.nanmax(altitude) * 1.1)
     plt.ylabel('Height (m)')
     plt.xlabel('time')
     contour_p = plt.pcolormesh(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
@@ -72,9 +86,9 @@ def plotter(start=2000, end=2200):
     line_p = plt.plot(time, altitude, color='black', linewidth=2)
     myFmt = dates.DateFormatter('%H:%M')
     ax.xaxis.set_major_formatter(myFmt)
-    #plt.colorbar(contour_p)
+    plt.colorbar(contour_p)
 
-plotter(551, 680)
+plotter(400, 600)
 
 
 class Index(object):
