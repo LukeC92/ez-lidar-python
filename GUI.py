@@ -22,11 +22,11 @@ height_correction = 1.5 * np.arange(12148)
 
 # using the mask option might avoid misrepresenting data, but it causes some warnings when using pcorlormesh
 # the warnings don't seem to happen with pcorlor, not sure about contourf
-def z_maker(x, y):
-    # data = lidar_data.profile[0][x:y].data.clip(0)
-    # data_m = ma.masked_invalid(data)
-    # return data_m
-    return np.nan_to_num(lidar_data.profile[0][x:y].data.clip(0))
+def z_maker(x, y, channel = 0):
+    data = lidar_data.profile[0][x:y].data.clip(0)
+    data_m = ma.masked_invalid(data)
+    return data_m
+    # return np.nan_to_num(lidar_data.profile[channel][x:y].data.clip(0))
 
 def height_maker(x, y, z):
     altitude = lidar_data['Altitude (m)'][x:y].data
@@ -39,7 +39,7 @@ def height_maker(x, y, z):
     #height = ma.masked_invalid(altitude_array)
     return altitude_array
 
-def time_maker(x,y,z):
+def time_maker(x, y, z):
     time = lidar_data['Time'][x:y].data
     time_array = np.empty_like(z)
     for j in range(0,len(z)):
@@ -67,16 +67,17 @@ fig, ax = plt.subplots()
 plt.subplots_adjust(bottom=0.2)
 
 
-def plotter(start=2000, end=2200):
+def plotter(start=2000, end=2200, channel=0):
     # pcolor and pcolormesh could use time_tall
-    z = z_maker(start, end)
+    z = z_maker(start, end, channel)
     time = dates.epoch2num(lidar_data['Time'][start:end].data)
-    time_tall = time_maker(start, end, z)
+    #time_tall = time_maker(start, end, z)
     altitude = lidar_data['Altitude (m)'][start:end].data
     #altitude = full_altitude[start:end]
     height = height_maker(start, end, z)
     #height = height_quick_maker(start, end)
-    plt.ylim(0, np.nanmax(altitude) * 1.1)
+    if ~np.isnan(np.nanmax(altitude)):
+        plt.ylim(0, np.nanmax(altitude) * 1.1)
     plt.ylabel('Height (m)')
     plt.xlabel('time')
     contour_p = plt.pcolormesh(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
@@ -94,9 +95,9 @@ plotter(400, 600)
 class Index(object):
     def next(self, event):
         print(ax.xaxis)
+        print('start')
+        #print(contour_p.get_array())
         plt.clf()
-        print(start)
-        print(contour_p.get_array())
         # plt.cla() just clears the button
         # https://stackoverflow.com/questions/17085711/plot-to-specific-axes-in-matplotlib
         # https://stackoverflow.com/questions/14254379/how-can-i-attach-a-pyplot-function-to-a-figure-instance/14261698#14261698
