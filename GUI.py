@@ -11,6 +11,7 @@ import numpy.ma as ma
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 from matplotlib import colors, dates, ticker
+import argparse
 
 
 lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
@@ -62,13 +63,9 @@ def time_maker(x, y, z):
 # def height_quick_maker(x,y):
 #     return full_height[:, x:y]
 
-
-fig, ax = plt.subplots()
-plt.subplots_adjust(bottom=0.2)
-
-
 def plotter(start=2000, end=2200, channel=0):
     # pcolor and pcolormesh could use time_tall
+    plt.gcf()
     z = z_maker(start, end, channel)
     time = dates.epoch2num(lidar_data['Time'][start:end].data)
     #time_tall = time_maker(start, end, z)
@@ -88,9 +85,6 @@ def plotter(start=2000, end=2200, channel=0):
     myFmt = dates.DateFormatter('%H:%M')
     ax.xaxis.set_major_formatter(myFmt)
     plt.colorbar(contour_p)
-
-plotter(400, 600)
-
 
 class Index(object):
     def next(self, event):
@@ -116,13 +110,44 @@ class Index(object):
     def prev(self, event):
         print("Testing testing 123")
 
-callback = Index()
-axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
-axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
-bnext = Button(axnext, 'Next')
-bnext.on_clicked(callback.next)
-bprev = Button(axprev, 'Previous')
-bprev.on_clicked(callback.prev)
 
-print("Near the end")
-plt.show()
+
+parser = argparse.ArgumentParser(description='Process some integers.')
+# parser.add_argument('integers', metavar='start end', type=int, nargs='+',
+#                     help='an integer for the accumulator')
+parser.add_argument('start', metavar='start', type=int, nargs='?',
+                    default=None, help='the start moment')
+parser.add_argument('--sum', dest='accumulate', action='store_const',
+                    const=sum, default=max,
+                    help='sum the integers (default: find the max)')
+
+args = parser.parse_args()
+#print(args.accumulate(args.integers))
+start = args.start
+
+try:
+    start
+except NameError:
+    start = None
+
+if start is None:
+    print("Start not defined.")
+else:
+    print(start)
+
+if __name__ == '__main__':
+    fig, ax = plt.subplots()
+    plt.subplots_adjust(bottom=0.2)
+
+    plotter(start, 600)
+
+    callback = Index()
+    axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
+    axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
+    bnext = Button(axnext, 'Next')
+    bnext.on_clicked(callback.next)
+    bprev = Button(axprev, 'Previous')
+    bprev.on_clicked(callback.prev)
+
+    print("Near the end")
+    plt.show()
