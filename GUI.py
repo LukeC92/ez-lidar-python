@@ -11,6 +11,7 @@ import numpy.ma as ma
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 from matplotlib import colors, dates, ticker
+from datetime import datetime, time, timezone
 import argparse
 
 
@@ -49,6 +50,23 @@ def time_maker(x, y, z):
     mpl_time = dates.epoch2num(time_array)
     return mpl_time
 
+def moment_maker(epoch_time):
+    index = np.argwhere(lidar_data['Time'][:].data <= epoch_time).max()
+    return index
+
+def epoch_maker(date, time):
+    time_dt = datetime.strptime(time, "%H:%M:%S").time()
+    date_dt = datetime.strptime(date, "%d/%m/%Y")
+    datetime_dt = datetime.combine(date_dt, time_dt)
+    timestamp = datetime.timestamp(datetime_dt.replace(tzinfo=timezone.utc))
+    return timestamp
+
+def start_end_maker(start_string, end_string, date):
+    start_e = epoch_maker(date, start_string)
+    end_e = epoch_maker(date, end_string)
+    start = moment_maker(start_e)
+    end = moment_maker(end_e)
+    return (start, end)
 
 # def time_quick_maker(x,y,z):
 #     time = m_time[x:y]
@@ -63,9 +81,14 @@ def time_maker(x, y, z):
 # def height_quick_maker(x,y):
 #     return full_height[:, x:y]
 
-def plotter(start=2000, end=2200, channel=0):
+def plotter(start_time="14:13:33", end_time = "14:20:30", date = "7/8/2015", channel=0):
     # pcolor and pcolormesh could use time_tall
+    (start, end) = start_end_maker(start_time, end_time, date)
     plt.gcf()
+    # start = start_end[0]
+    # end = start_end[1]
+    if start > end:
+        raise ValueError("and must be greate than start.")
     z = z_maker(start, end, channel)
     time = dates.epoch2num(lidar_data['Time'][start:end].data)
     #time_tall = time_maker(start, end, z)
@@ -112,34 +135,70 @@ class Index(object):
 
 
 
-parser = argparse.ArgumentParser(description='Process some integers.')
-# parser.add_argument('integers', metavar='start end', type=int, nargs='+',
-#                     help='an integer for the accumulator')
-parser.add_argument('start', metavar='start', type=int, nargs='?',
-                    default=None, help='the start moment')
-parser.add_argument('--sum', dest='accumulate', action='store_const',
-                    const=sum, default=max,
-                    help='sum the integers (default: find the max)')
-
-args = parser.parse_args()
-#print(args.accumulate(args.integers))
-start = args.start
-
-try:
-    start
-except NameError:
-    start = None
-
-if start is None:
-    print("Start not defined.")
-else:
-    print(start)
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Enter values for LIDAR processing.')
+    # parser.add_argument('integers', metavar='start end', type=int, nargs='+',
+    #                     help='an integer for the accumulator')
+    parser.add_argument('start', metavar='start', type=str, nargs='?',
+                        default="14:33:33", help='the start time in the format HH:MM:SS')
+    parser.add_argument('end', metavar='end', type=str, nargs='?',
+                        default="14:53:33", help='the start time in the format HH:MM:SS')
+    parser.add_argument('date', metavar='date', type=str, nargs='?',
+                        default="7/8/2015", help='the start time in the format HH:MM:SS')
+    # parser.add_argument('--sum', dest='accumulate', action='store_const',
+    #                     const=sum, default=max,
+    #                     help='sum the integers (default: find the max)')
+
+    # can't type python GUI.py end=15:03:33
+    # would like to be able to specify variables based on name rather than order.
+
+    args = parser.parse_args()
+    # print(args.accumulate(args.integers))
+    start = args.start
+    end = args.end
+    date = args.date
+
+    try:
+        start
+    except NameError:
+        start = None
+    if start is None:
+        print("Start not defined.")
+    else:
+        print(start)
+
+    try:
+        end
+    except NameError:
+        end = None
+    if end is None:
+        print("end not defined.")
+    else:
+        print(end)
+
+    try:
+        date
+    except NameError:
+        date = None
+    if date is None:
+        print("date not defined.")
+    else:
+        print(date)
+
+    # userInput = input("Would you like to start a new transaction?: ");
+    # userInput = userInput.lower();
+    #
+    # #Validate input
+    # while userInput in ['yes', 'no']:
+    #     print ("Invalid input. Please try again.")
+    #     userInput = input("Would you like to start a new transaction?: ")
+    #     userInput = userInput.lower()
+
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.2)
 
-    plotter(start, 600)
+    plotter(start, end, date)
 
     callback = Index()
     axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
