@@ -13,6 +13,7 @@ from matplotlib.widgets import Button
 from matplotlib import colors, dates, ticker
 from datetime import datetime, time, timezone
 import argparse
+import re
 
 
 lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
@@ -67,6 +68,11 @@ def start_end_maker(start_string, end_string, date):
     start = moment_maker(start_e)
     end = moment_maker(end_e)
     return (start, end)
+
+def time_type(s, pat=re.compile("([0-1]?\d|2[0-3]):([0-5]?\d):([0-5]?\d)")):
+    if not pat.fullmatch(s):
+        raise argparse.ArgumentTypeError("Please enter a valid time in the format HH:MM:SS.")
+    return s
 
 # def time_quick_maker(x,y,z):
 #     time = m_time[x:y]
@@ -140,12 +146,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Enter values for LIDAR processing.')
     # parser.add_argument('integers', metavar='start end', type=int, nargs='+',
     #                     help='an integer for the accumulator')
-    parser.add_argument('start', metavar='start', type=str, nargs='?',
+#    parser.add_argument('time', type=time_type)
+    parser.add_argument('--start', type=time_type,
                         default="14:33:33", help='the start time in the format HH:MM:SS')
-    parser.add_argument('end', metavar='end', type=str, nargs='?',
-                        default="14:53:33", help='the start time in the format HH:MM:SS')
-    parser.add_argument('date', metavar='date', type=str, nargs='?',
-                        default="7/8/2015", help='the start time in the format HH:MM:SS')
+    parser.add_argument('--end', type=str,
+                        default="14:53:33", help='the end time in the format HH:MM:SS')
+    parser.add_argument('--date', type=str,
+                        default="7/8/2015", help='the date time in the format DD/MM/YYYY')
+    parser.add_argument('--plot', type=str, choices=['rock', 'paper', 'scissors'],
+                        default='rock', help='which plot do you want')
     # parser.add_argument('--sum', dest='accumulate', action='store_const',
     #                     const=sum, default=max,
     #                     help='sum the integers (default: find the max)')
@@ -153,11 +162,18 @@ if __name__ == '__main__':
     # can't type python GUI.py end=15:03:33
     # would like to be able to specify variables based on name rather than order.
 
+    # https://stackoverflow.com/questions/41881002/python-argparse-regex-expression
+    # https://stackoverflow.com/questions/12595051/check-if-string-matches-pattern
+    # https://docs.python.org/3/library/re.html
+
     args = parser.parse_args()
     # print(args.accumulate(args.integers))
     start = args.start
     end = args.end
     date = args.date
+    plot = args.plot
+    # time = args.time
+    # print(time)
 
     try:
         start
@@ -186,6 +202,17 @@ if __name__ == '__main__':
     else:
         print(date)
 
+    try:
+        plot
+    except NameError:
+        plot = None
+    if plot is None:
+        print("plot not defined.")
+    else:
+        print(plot)
+
+    print(end < start)
+
     # userInput = input("Would you like to start a new transaction?: ");
     # userInput = userInput.lower();
     #
@@ -195,18 +222,18 @@ if __name__ == '__main__':
     #     userInput = input("Would you like to start a new transaction?: ")
     #     userInput = userInput.lower()
 
-    fig, ax = plt.subplots()
-    plt.subplots_adjust(bottom=0.2)
-
-    plotter(start, end, date)
-
-    callback = Index()
-    axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
-    axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
-    bnext = Button(axnext, 'Next')
-    bnext.on_clicked(callback.next)
-    bprev = Button(axprev, 'Previous')
-    bprev.on_clicked(callback.prev)
-
-    print("Near the end")
-    plt.show()
+    # fig, ax = plt.subplots()
+    # plt.subplots_adjust(bottom=0.2)
+    #
+    # plotter(start, end, date)
+    #
+    # callback = Index()
+    # axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
+    # axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
+    # bnext = Button(axnext, 'Next')
+    # bnext.on_clicked(callback.next)
+    # bprev = Button(axprev, 'Previous')
+    # bprev.on_clicked(callback.prev)
+    #
+    # print("Near the end")
+    # plt.show()
