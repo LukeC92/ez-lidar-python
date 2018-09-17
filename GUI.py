@@ -74,6 +74,14 @@ def time_type(s, pat=re.compile("([0-1]?\d|2[0-3]):([0-5]?\d):([0-5]?\d)")):
         raise argparse.ArgumentTypeError("Please enter a valid time in the format HH:MM:SS.")
     return s
 
+def date_type(s, pat=re.compile("^((([0-2]?\d|3[0-1])/(0?[1,3,5,7,8]|1[0,2]))"
+                 "|(([0-2]?\d|30)/(0?[4,6,9]|11))"
+                 "|(([0-2]?\d)/(0?2)))"
+                 "/\d\d\d\d$")):
+    if not pat.fullmatch(s):
+        raise argparse.ArgumentTypeError("Please enter a valid date in the format DD/MM/YYYY.")
+    return s
+
 # def time_quick_maker(x,y,z):
 #     time = m_time[x:y]
 #     time_array = np.empty_like(z)
