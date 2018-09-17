@@ -157,9 +157,9 @@ if __name__ == '__main__':
 #    parser.add_argument('time', type=time_type)
     parser.add_argument('--start', type=time_type,
                         default="14:33:33", help='the start time in the format HH:MM:SS')
-    parser.add_argument('--end', type=str,
+    parser.add_argument('--end', type=time_type,
                         default="14:53:33", help='the end time in the format HH:MM:SS')
-    parser.add_argument('--date', type=str,
+    parser.add_argument('--date', type=date_type,
                         default="7/8/2015", help='the date time in the format DD/MM/YYYY')
     parser.add_argument('--plot', type=str, choices=['rock', 'paper', 'scissors'],
                         default='rock', help='which plot do you want')
@@ -219,7 +219,7 @@ if __name__ == '__main__':
     else:
         print(plot)
 
-    print(end < start)
+    print(start < end)
 
     # userInput = input("Would you like to start a new transaction?: ");
     # userInput = userInput.lower();
