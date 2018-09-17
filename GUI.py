@@ -69,15 +69,17 @@ def start_end_maker(start_string, end_string, date):
     end = moment_maker(end_e)
     return (start, end)
 
-def time_type(s, pat=re.compile("([0-1]?\d|2[0-3]):([0-5]?\d):([0-5]?\d)")):
+def time_type(s):
+    pat = re.compile("([0-1]?\d|2[0-3]):([0-5]?\d):([0-5]?\d)")
     if not pat.fullmatch(s):
         raise argparse.ArgumentTypeError("Please enter a valid time in the format HH:MM:SS.")
     return s
 
-def date_type(s, pat=re.compile("^((([0-2]?\d|3[0-1])/(0?[1,3,5,7,8]|1[0,2]))"
-                 "|(([0-2]?\d|30)/(0?[4,6,9]|11))"
-                 "|(([0-2]?\d)/(0?2)))"
-                 "/\d\d\d\d$")):
+def date_type(s):
+    pat = re.compile("^((([0-2]?\d|3[0-1])/(0?[1,3,5,7,8]|1[0,2]))"
+                     "|(([0-2]?\d|30)/(0?[4,6,9]|11))"
+                     "|(([0-2]?\d)/(0?2)))"
+                     "/\d\d\d\d$")
     if not pat.fullmatch(s):
         raise argparse.ArgumentTypeError("Please enter a valid date in the format DD/MM/YYYY.")
     return s
@@ -151,7 +153,8 @@ class Index(object):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Enter values for LIDAR processing.')
+    parser = argparse.ArgumentParser(description='Enter values for LIDAR processing.',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # parser.add_argument('integers', metavar='start end', type=int, nargs='+',
     #                     help='an integer for the accumulator')
 #    parser.add_argument('time', type=time_type)
@@ -183,43 +186,15 @@ if __name__ == '__main__':
     # time = args.time
     # print(time)
 
-    try:
-        start
-    except NameError:
-        start = None
-    if start is None:
-        print("Start not defined.")
-    else:
-        print(start)
-
-    try:
-        end
-    except NameError:
-        end = None
-    if end is None:
-        print("end not defined.")
-    else:
-        print(end)
-
-    try:
-        date
-    except NameError:
-        date = None
-    if date is None:
-        print("date not defined.")
-    else:
-        print(date)
-
-    try:
-        plot
-    except NameError:
-        plot = None
-    if plot is None:
-        print("plot not defined.")
-    else:
-        print(plot)
+    print(start)
+    print(end)
+    print(date)
+    print(plot)
 
     print(start < end)
+
+    if end < start:
+        raise ValueError("Start must come before end.")
 
     # userInput = input("Would you like to start a new transaction?: ");
     # userInput = userInput.lower();
@@ -243,5 +218,5 @@ if __name__ == '__main__':
     # bprev = Button(axprev, 'Previous')
     # bprev.on_clicked(callback.prev)
     #
-    # print("Near the end")
+    print("Near the end")
     # plt.show()
