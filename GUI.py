@@ -17,7 +17,7 @@ import re
 
 
 lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
-
+PLOT_OPTIONS =  {'LINEAR', 'CONTOURF', 'PCOLOR', 'PCOLORMESH'}
 
 # m_time = dates.epoch2num(lidar_data['Time'][:].data)
 # full_altitude = lidar_data['Altitude (m)'][:].data
@@ -97,7 +97,9 @@ def date_type(s):
 # def height_quick_maker(x,y):
 #     return full_height[:, x:y]
 
-def plotter(start_time="14:13:33", end_time = "14:20:30", date = "7/8/2015", channel=0):
+def plotter(start_time="14:13:33", end_time = "14:20:30", date = "7/8/2015", channel=0, plot_choice="PCOLORMESH"):
+    if plot_choice not in PLOT_OPTIONS:
+        raise ValueError("results: status must be one of %r." % PLOT_OPTIONS)
     # pcolor and pcolormesh could use time_tall
     (start, end) = start_end_maker(start_time, end_time, date)
     plt.gcf()
@@ -164,8 +166,8 @@ if __name__ == '__main__':
                         default="14:53:33", help='the end time in the format HH:MM:SS')
     parser.add_argument('--date', type=date_type,
                         default="7/8/2015", help='the date time in the format DD/MM/YYYY')
-    parser.add_argument('--plot', type=str, choices=['rock', 'paper', 'scissors'],
-                        default='rock', help='which plot do you want')
+    parser.add_argument('--plot', type=str, choices=PLOT_OPTIONS,
+                        default='PCOLORMESH', help='which plot do you want')
     # parser.add_argument('--sum', dest='accumulate', action='store_const',
     #                     const=sum, default=max,
     #                     help='sum the integers (default: find the max)')
@@ -196,27 +198,18 @@ if __name__ == '__main__':
     if end < start:
         raise ValueError("Start must come before end.")
 
-    # userInput = input("Would you like to start a new transaction?: ");
-    # userInput = userInput.lower();
-    #
-    # #Validate input
-    # while userInput in ['yes', 'no']:
-    #     print ("Invalid input. Please try again.")
-    #     userInput = input("Would you like to start a new transaction?: ")
-    #     userInput = userInput.lower()
+    fig, ax = plt.subplots()
+    plt.subplots_adjust(bottom=0.2)
 
-    # fig, ax = plt.subplots()
-    # plt.subplots_adjust(bottom=0.2)
-    #
-    # plotter(start, end, date)
-    #
-    # callback = Index()
-    # axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
-    # axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
-    # bnext = Button(axnext, 'Next')
-    # bnext.on_clicked(callback.next)
-    # bprev = Button(axprev, 'Previous')
-    # bprev.on_clicked(callback.prev)
-    #
+    plotter(start, end, date, plot_choice=PCOLO)
+
+    callback = Index()
+    axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
+    axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
+    bnext = Button(axnext, 'Next')
+    bnext.on_clicked(callback.next)
+    bprev = Button(axprev, 'Previous')
+    bprev.on_clicked(callback.prev)
+
     print("Near the end")
-    # plt.show()
+    plt.show()
