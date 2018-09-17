@@ -97,9 +97,11 @@ def date_type(s):
 # def height_quick_maker(x,y):
 #     return full_height[:, x:y]
 
+#contour and contourf are slow and contour leaves white space
+#pcolor is slow
 def plotter(start_time="14:13:33", end_time = "14:20:30", date = "7/8/2015", channel=0, plot_choice="PCOLORMESH"):
     if plot_choice not in PLOT_OPTIONS:
-        raise ValueError("results: status must be one of %r." % PLOT_OPTIONS)
+        raise ValueError("plot_choice must be one of {}.".format(PLOT_OPTIONS))
     # pcolor and pcolormesh could use time_tall
     (start, end) = start_end_maker(start_time, end_time, date)
     plt.gcf()
@@ -109,7 +111,6 @@ def plotter(start_time="14:13:33", end_time = "14:20:30", date = "7/8/2015", cha
         raise ValueError("and must be greate than start.")
     z = z_maker(start, end, channel)
     time = dates.epoch2num(lidar_data['Time'][start:end].data)
-    #time_tall = time_maker(start, end, z)
     altitude = lidar_data['Altitude (m)'][start:end].data
     #altitude = full_altitude[start:end]
     height = height_maker(start, end, z)
@@ -118,10 +119,20 @@ def plotter(start_time="14:13:33", end_time = "14:20:30", date = "7/8/2015", cha
         plt.ylim(0, np.nanmax(altitude) * 1.1)
     plt.ylabel('Height (m)')
     plt.xlabel('time')
-    contour_p = plt.pcolormesh(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
-    #contour_p = plt.pcolormesh(time_tall, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
-    #contour_p = plt.pcolormesh(time, height,z, vmax=0.0007)
-    #contour_p = plt.contourf(time_tall, height,z, locator=ticker.LogLocator())
+    print(plot_choice)
+    if plot_choice == "PCOLOR":
+        print("It is pcolor")
+        contour_p = plt.pcolor(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
+    elif plot_choice == "LINEAR":
+        print("It is linear")
+        contour_p = plt.pcolormesh(time, height, z, vmax=0.0007)
+    elif plot_choice == "CONTOURF":
+        print("It is contourf")
+        time_tall = time_maker(start, end, z)
+        contour_p = plt.contourf(time_tall, height, z, locator=ticker.LogLocator())
+    else:
+        print("It is log")
+        contour_p = plt.pcolormesh(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
     line_p = plt.plot(time, altitude, color='black', linewidth=2)
     myFmt = dates.DateFormatter('%H:%M')
     ax.xaxis.set_major_formatter(myFmt)
@@ -166,7 +177,7 @@ if __name__ == '__main__':
                         default="14:53:33", help='the end time in the format HH:MM:SS')
     parser.add_argument('--date', type=date_type,
                         default="7/8/2015", help='the date time in the format DD/MM/YYYY')
-    parser.add_argument('--plot', type=str, choices=PLOT_OPTIONS,
+    parser.add_argument('--plot_choice', type=str, choices=PLOT_OPTIONS,
                         default='PCOLORMESH', help='which plot do you want')
     # parser.add_argument('--sum', dest='accumulate', action='store_const',
     #                     const=sum, default=max,
@@ -184,14 +195,14 @@ if __name__ == '__main__':
     start = args.start
     end = args.end
     date = args.date
-    plot = args.plot
+    plot_choice = args.plot_choice
     # time = args.time
     # print(time)
 
     print(start)
     print(end)
     print(date)
-    print(plot)
+    print(plot_choice)
 
     print(start < end)
 
@@ -201,7 +212,7 @@ if __name__ == '__main__':
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.2)
 
-    plotter(start, end, date, plot_choice=PCOLO)
+    plotter(start, end, date, plot_choice=plot_choice)
 
     callback = Index()
     axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
