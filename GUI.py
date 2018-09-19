@@ -18,6 +18,7 @@ import re
 
 lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
 PLOT_OPTIONS =  {'LINEAR', 'CONTOURF', 'PCOLOR', 'PCOLORMESH'}
+VALID_CHANNELS = {0, 1, 2}
 
 # m_time = dates.epoch2num(lidar_data['Time'][:].data)
 # full_altitude = lidar_data['Altitude (m)'][:].data
@@ -26,7 +27,7 @@ height_correction = 1.5 * np.arange(12148)
 # using the mask option might avoid misrepresenting data, but it causes some warnings when using pcorlormesh
 # the warnings don't seem to happen with pcorlor, not sure about contourf
 def z_maker(x, y, channel = 0):
-    data = lidar_data.profile[0][x:y].data.clip(0)
+    data = lidar_data.profile[channel][x:y].data.clip(0)
     data_m = ma.masked_invalid(data)
     return data_m
     # return np.nan_to_num(lidar_data.profile[channel][x:y].data.clip(0))
@@ -102,6 +103,8 @@ def date_type(s):
 def plotter(start_time="14:13:33", end_time = "14:20:30", date = "7/8/2015", channel=0, plot_choice="PCOLORMESH"):
     if plot_choice not in PLOT_OPTIONS:
         raise ValueError("plot_choice must be one of {}.".format(PLOT_OPTIONS))
+    if channel not in VALID_CHANNELS:
+        raise ValueError("channel must be one of {}.".format(PLOT_OPTIONS))
     # pcolor and pcolormesh could use time_tall
     (start, end) = start_end_maker(start_time, end_time, date)
     plt.gcf()
@@ -178,17 +181,14 @@ if __name__ == '__main__':
     parser.add_argument('--date', type=date_type,
                         default="7/8/2015", help='the date time in the format DD/MM/YYYY')
     parser.add_argument('--plot_choice', type=str, choices=PLOT_OPTIONS,
-                        default='PCOLORMESH', help='which plot do you want')
+                        default='PCOLORMESH', help='Which plot do you want')
+    parser.add_argument('--channel', type=int, choices=VALID_CHANNELS,
+                        default=0, help='Which LIDAR channel do you want data from?')
+    parser.add_argument('--file_path', type=str, default='metoffice-lidar_faam_20150807_r0_B920_raw.nc',
+                        help='Enter the path to the NetCDF file containing the LIDAAR data.')
     # parser.add_argument('--sum', dest='accumulate', action='store_const',
     #                     const=sum, default=max,
     #                     help='sum the integers (default: find the max)')
-
-    # can't type python GUI.py end=15:03:33
-    # would like to be able to specify variables based on name rather than order.
-
-    # https://stackoverflow.com/questions/41881002/python-argparse-regex-expression
-    # https://stackoverflow.com/questions/12595051/check-if-string-matches-pattern
-    # https://docs.python.org/3/library/re.html
 
     args = parser.parse_args()
     # print(args.accumulate(args.integers))
@@ -196,8 +196,12 @@ if __name__ == '__main__':
     end = args.end
     date = args.date
     plot_choice = args.plot_choice
+    channel = args.channel
+    print(6+channel)
     # time = args.time
     # print(time)
+    file_path = args.file_path
+    lidar_data = lidar.lidar(file_path)
 
     print(start)
     print(end)
@@ -212,7 +216,7 @@ if __name__ == '__main__':
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.2)
 
-    plotter(start, end, date, plot_choice=plot_choice)
+    plotter(start, end, date, channel=channel, plot_choice=plot_choice)
 
     callback = Index()
     axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
