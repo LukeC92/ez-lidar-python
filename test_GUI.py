@@ -4,6 +4,12 @@ import pytest
 
 lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
 
+#https://docs.pytest.org/en/latest/assert.html
+#https://docs.pytest.org/en/latest/
+#http://pythontesting.net/framework/pytest/pytest-introduction/
+#https://docs.pytest.org/en/latest/
+#https://docs.python-guide.org/writing/tests/
+
 def inc(x):
     return x + 1
 
