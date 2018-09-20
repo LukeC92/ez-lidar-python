@@ -1,3 +1,8 @@
 The plotter could check to see if both the start datetime and the end datetime are both before or both after the data
 collection interval. If this is the case then an exception could be thrown to indicate this.
 
+A way to make the date automatically fit whatever the data ha.
+
+Maybe make date a global variable?
+When the data is first opened give an indication of what the date and time range would be.
+

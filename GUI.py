@@ -14,6 +14,7 @@ from matplotlib import colors, dates, ticker
 from datetime import datetime, time, timezone
 import argparse
 import re
+import warnings
 
 
 lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
@@ -53,11 +54,24 @@ def time_maker(x, y, z):
     return mpl_time
 
 def moment_maker(epoch_time):
-    index = np.argwhere(lidar_data['Time'][:].data <= epoch_time).max()
-    return index
+    time_array = lidar_data['Time'][:].data
+    if epoch_time < time_array.min():
+        print(str(epoch_time) + " < " + str(time_array.min()))
+        warnings.warn("A given date and time is earlier "
+                      "than the experiment period", Warning)
+        return 0
+    elif epoch_time > time_array.max():
+        print(str(epoch_time) + " > " + str(time_array.max()))
+        warnings.warn("A given date and time is later "
+                      "than the experiment period", Warning)
+        return -1
+    else:
+        index_array = np.argwhere(time_array <= epoch_time)
+        index = index_array.max()
+        return index
 
-def epoch_maker(date, time):
-    time_dt = datetime.strptime(time, "%H:%M:%S").time()
+def epoch_maker(date, time_string):
+    time_dt = datetime.strptime(time_string, "%H:%M:%S").time()
     date_dt = datetime.strptime(date, "%d/%m/%Y")
     datetime_dt = datetime.combine(date_dt, time_dt)
     timestamp = datetime.timestamp(datetime_dt.replace(tzinfo=timezone.utc))
@@ -66,6 +80,8 @@ def epoch_maker(date, time):
 def start_end_maker(start_string, end_string, date):
     start_e = epoch_maker(date, start_string)
     end_e = epoch_maker(date, end_string)
+    print("Start is " + str(start_e))
+    print("End is " + str(end_e))
     start = moment_maker(start_e)
     end = moment_maker(end_e)
     return (start, end)
@@ -107,11 +123,16 @@ def plotter(start_time="14:13:33", end_time = "14:20:30", date = "7/8/2015", cha
         raise ValueError("channel must be one of {}.".format(PLOT_OPTIONS))
     # pcolor and pcolormesh could use time_tall
     (start, end) = start_end_maker(start_time, end_time, date)
-    plt.gcf()
     # start = start_end[0]
     # end = start_end[1]
-    if start > end:
-        raise ValueError("and must be greate than start.")
+    print(lidar_data['Time'][:].data.shape[0])
+    print(start)
+    print(start % lidar_data['Time'][:].data.shape[0])
+    print(end)
+    print(end % lidar_data['Time'][:].data.shape[0])
+    if start % lidar_data['Time'][:].data.shape[0] >= end % lidar_data['Time'][:].data.shape[0]:
+        raise ValueError("End must be greater than start.")
+    plt.gcf()
     z = z_maker(start, end, channel)
     time = dates.epoch2num(lidar_data['Time'][start:end].data)
     altitude = lidar_data['Altitude (m)'][start:end].data
