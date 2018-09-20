@@ -70,16 +70,16 @@ def moment_maker(epoch_time):
         index = index_array.max()
         return index
 
-def epoch_maker(date, time_string):
+def epoch_maker(time_string):
     time_dt = datetime.strptime(time_string, "%H:%M:%S").time()
-    date_dt = datetime.strptime(date, "%d/%m/%Y")
-    datetime_dt = datetime.combine(date_dt, time_dt)
+    #
+    datetime_dt = datetime.combine(date, time_dt)
     timestamp = datetime.timestamp(datetime_dt.replace(tzinfo=timezone.utc))
     return timestamp
 
-def start_end_maker(start_string, end_string, date):
-    start_e = epoch_maker(date, start_string)
-    end_e = epoch_maker(date, end_string)
+def start_end_maker(start_string, end_string):
+    start_e = epoch_maker(start_string)
+    end_e = epoch_maker(end_string)
     print("Start is " + str(start_e))
     print("End is " + str(end_e))
     start = moment_maker(start_e)
@@ -116,13 +116,13 @@ def date_type(s):
 
 #contour and contourf are slow and contour leaves white space
 #pcolor is slow
-def plotter(start_time="14:13:33", end_time = "14:20:30", date = "7/8/2015", channel=0, plot_choice="PCOLORMESH"):
+def plotter(start_time="14:13:33", end_time = "14:20:30", channel=0, plot_choice="PCOLORMESH"):
     if plot_choice not in PLOT_OPTIONS:
         raise ValueError("plot_choice must be one of {}.".format(PLOT_OPTIONS))
     if channel not in VALID_CHANNELS:
         raise ValueError("channel must be one of {}.".format(PLOT_OPTIONS))
     # pcolor and pcolormesh could use time_tall
-    (start, end) = start_end_maker(start_time, end_time, date)
+    (start, end) = start_end_maker(start_time, end_time)
     # start = start_end[0]
     # end = start_end[1]
     print(lidar_data['Time'][:].data.shape[0])
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     parser.add_argument('--end', type=time_type,
                         default="14:53:33", help='the end time in the format HH:MM:SS')
     parser.add_argument('--date', type=date_type,
-                        default="7/8/2015", help='the date time in the format DD/MM/YYYY')
+                        default=None, help='the date time in the format DD/MM/YYYY')
     parser.add_argument('--plot_choice', type=str, choices=PLOT_OPTIONS,
                         default='PCOLORMESH', help='Which plot do you want')
     parser.add_argument('--channel', type=int, choices=VALID_CHANNELS,
@@ -211,18 +211,33 @@ if __name__ == '__main__':
     #                     const=sum, default=max,
     #                     help='sum the integers (default: find the max)')
 
+
+
+
     args = parser.parse_args()
+    file_path = args.file_path
+    lidar_data = lidar.lidar(file_path)
+    date_string = args.date
+
+    if date_string == None:
+        print("String was none")
+        time_0 = lidar_data['Time'][0]
+        date = datetime.utcfromtimestamp(time_0.item())
+    else:
+        date = datetime.strptime(date_string, "%d/%m/%Y")
+        print("String was not none.")
+
+
     # print(args.accumulate(args.integers))
     start = args.start
     end = args.end
-    date = args.date
+
     plot_choice = args.plot_choice
     channel = args.channel
     print(6+channel)
     # time = args.time
     # print(time)
-    file_path = args.file_path
-    lidar_data = lidar.lidar(file_path)
+
 
     print(start)
     print(end)
@@ -237,7 +252,7 @@ if __name__ == '__main__':
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.2)
 
-    plotter(start, end, date, channel=channel, plot_choice=plot_choice)
+    plotter(start, end, channel=channel, plot_choice=plot_choice)
 
     callback = Index()
     axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
