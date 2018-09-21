@@ -30,29 +30,69 @@ VALID_CHANNELS = {0, 1, 2}
 height_correction = 1.5 * np.arange(12148)
 
 class GUI_processor:
-    def __init__(self, file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc', start_moment=200, end_moment=400):
+    def __init__(self, file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc', start_string=None, end_string=None,
+                 date_string=None, channel=0):
         """
         The default folder should be 'metoffice-lidar_faam_20150807_r0_B920_raw.nc'
         """
-        lidar_data = lidar.lidar(file_path)
-        start_moment = start_moment
-        end_moment = end_moment
+        self.lidar_data = lidar.lidar(file_path)
+        if date_string == None:
+            print("String was none")
+            time_0 = self.lidar_data['Time'][0]
+            self.date_dt = datetime.utcfromtimestamp(time_0.item())
+        else:
+            self.date_dt = datetime.strptime(date_string, "%d/%m/%Y")
+            print("String was not none.")
 
-    def z_maker(x, y, channel=0):
+        if start_string == None:
+            print("start String was none")
+            self.start_epoch = lidar_data['Time'][0]
+            self.start_moment = 0
+        else:
+            self.start_epoch = self.epoch_maker(start_string)
+            self.start_moment = self.moment_maker(self.start_epoch)
+            print("start String was not none.")
+
+        if end_string == None:
+            print("End String was none")
+            end_epoch = lidar_data['Time'][-1]
+            self.end_moment = -1
+        else:
+            end_epoch = self.epoch_maker(end_string)
+            self.end_moment = self.moment_maker(end_epoch)
+            print("End String was not none.")
+
+        length = self.lidar_data['Time'][:].data.shape[0]
+        print(length)
+        print("Start is" + str(self.start_moment))
+        print("Start modulo is " + str(self.start_moment % length))
+        print("End is" + str(self.end_moment))
+        print("End modulo is " + str(self.end_moment % length))
+        if self.start_moment % length >= self.end_moment % length:
+            raise ValueError("End must be greater than start.")
+
+        if channel in VALID_CHANNELS:
+            self.channel = channel
+        else:
+            raise ValueError("channel must be one of {}.".format(VALID_CHANNELS))
+
+    def z_maker(self, x, y, channel=None):
         """"
         using the mask option might avoid misrepresenting data, but it causes some warnings when using
         pcorlormeshthe warnings don't seem to happen with pcorlor, not sure about contourf
         """
-        data = lidar_data.profile[channel][x:y].data.clip(0)
+        if channel == None:
+            channel = self.channel
+        data = self.lidar_data.profile[channel][x:y].data.clip(0)
         data_m = ma.masked_invalid(data)
         return data_m
         # return np.nan_to_num(lidar_data.profile[channel][x:y].data.clip(0))
 
-    def height_maker(x, y, z):
+    def height_maker(self, x, y, z):
         """
         This uses information from Dave that they all go down by the same amount.
         """
-        altitude = lidar_data['Altitude (m)'][x:y].data
+        altitude = self.lidar_data['Altitude (m)'][x:y].data
         # altitude = full_altitude[x:y]
         altitude_array = np.empty_like(z)
         for j in range(0, len(z[0])):
@@ -71,8 +111,8 @@ class GUI_processor:
         mpl_time = dates.epoch2num(time_array)
         return mpl_time
 
-    def moment_maker(epoch_time):
-        time_array = lidar_data['Time'][:].data
+    def moment_maker(self, epoch_time):
+        time_array = self.lidar_data['Time'][:].data
         if epoch_time < time_array.min():
             print(str(epoch_time) + " < " + str(time_array.min()))
             warnings.warn("A given date and time is earlier "
@@ -88,67 +128,70 @@ class GUI_processor:
             index = index_array.max()
             return index
 
-    def epoch_maker(time_string):
+    def epoch_maker(self, time_string):
+        """
+
+        :param time_string: A string representing a time in the format HH:MM:SS
+        :return: The Unix time corresponding to the given string on the date lised at self.date_dt.
+        """
         time_dt = datetime.strptime(time_string, "%H:%M:%S").time()
-        #
-        datetime_dt = datetime.combine(date, time_dt)
+        date_dt = self.date_dt
+        datetime_dt = datetime.combine(date_dt, time_dt)
         timestamp = datetime.timestamp(datetime_dt.replace(tzinfo=timezone.utc))
         return timestamp
 
-    def start_end_maker(start_string, end_string):
-        start_e = epoch_maker(start_string)
-        end_e = epoch_maker(end_string)
+    def start_end_maker(self, start_string, end_string):
+        start_e = self.epoch_maker(start_string)
+        end_e = self.epoch_maker(end_string)
         print("Start is " + str(start_e))
         print("End is " + str(end_e))
-        start = moment_maker(start_e)
-        end = moment_maker(end_e)
+        start = self.moment_maker(start_e)
+        end = self.moment_maker(end_e)
         return (start, end)
-
-
-    # def time_quick_maker(x,y,z):
-    #     time = m_time[x:y]
-    #     time_array = np.empty_like(z)
-    #     for j in range(0,len(z)):
-    #         for i in range(0, len(z[j])):
-    #             time_array[j,i] = time[i]
-    #     return time_array
-
-    # full_z = z_maker(0, len(lidar_data.profile[0][:].data[0]))
-    # full_height = height_maker(0, len(lidar_data.profile[0][:].data[0]), full_z)
-    # def height_quick_maker(x,y):
-    #     return full_height[:, x:y]
 
     # contour and contourf are slow and contour leaves white space
     # pcolor is slow
-    def plotter(start_time="14:13:33", end_time="14:20:30", channel=0, plot_choice="PCOLORMESH"):
-        # if plot_choice not in PLOT_OPTIONS:
-        #     raise ValueError("plot_choice must be one of {}.".format(PLOT_OPTIONS))
-        # if channel not in VALID_CHANNELS:
-        #     raise ValueError("channel must be one of {}.".format(PLOT_OPTIONS))
+    def plotter(self, start=None, end=None, channel=0, plot_choice="PCOLORMESH"):
+        """
+
+        :param start: Start moment
+        :param end: End moment
+        :param channel: THe LIDAR channel
+        :param plot_choice: What method should be used to plot
+        :return: Plots the graph
+        """
+        if plot_choice not in PLOT_OPTIONS:
+            raise ValueError("plot_choice must be one of {}.".format(PLOT_OPTIONS))
+        if channel not in VALID_CHANNELS:
+            raise ValueError("channel must be one of {}.".format(VALID_CHANNELS))
+
         # # pcolor and pcolormesh could use time_tall
         # (start, end) = start_end_maker(start_time, end_time)
         # # start = start_end[0]
         # # end = start_end[1]
-        # length = lidar_data['Time'][:].data.shape[0]
-        # # make sure it's modulo the right value
-        # # ask on stack overflow if there's a more effecient way of doing this
-        # if start % length >= end % length:
-        #     raise ValueError("End must be greater than start.")
+        length = self.lidar_data['Time'][:].data.shape[0]
+        # ask on stack overflow if there's a more effecient way of doing this
+
         # start = start_moment
-        # end = end_moment
-        start = 400
-        end = 600
+        # # end = end_moment
+
+        if start == None:
+            start = self.start_moment
+        if end == None:
+            end = self.end_moment
+        if start % length >= end % length:
+            raise ValueError("End must be greater than start.")
         plt.gcf()
-        z = GUI_processor.z_maker(start, end, channel)
-        time = dates.epoch2num(lidar_data['Time'][start:end].data)
-        altitude = lidar_data['Altitude (m)'][start:end].data
+        z =  self.z_maker(start, end, channel)
+        time = dates.epoch2num(self.lidar_data['Time'][start:end].data)
+        altitude = self.lidar_data['Altitude (m)'][start:end].data
         # altitude = full_altitude[start:end]
-        height = GUI_processor.height_maker(start, end, z)
+        height = self.height_maker(start, end, z)
         # height = height_quick_maker(start, end)
         if ~np.isnan(np.nanmax(altitude)):
             plt.ylim(0, np.nanmax(altitude) * 1.1)
         plt.ylabel('Height (m)')
-        plt.xlabel('time')
+        plt.xlabel('Time')
         print(plot_choice)
         if plot_choice == "PCOLOR":
             print("It is pcolor")
@@ -214,16 +257,14 @@ def date_type(s):
         raise argparse.ArgumentTypeError("Please enter a valid date in the format DD/MM/YYYY.")
     return s
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Enter values for LIDAR processing.',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    # parser.add_argument('integers', metavar='start end', type=int, nargs='+',
-    #                     help='an integer for the accumulator')
-#    parser.add_argument('time', type=time_type)
     parser.add_argument('--start', type=time_type,
-                        default="14:33:33", help='the start time in the format HH:MM:SS')
+                        default=None, help='the start time in the format HH:MM:SS')
     parser.add_argument('--end', type=time_type,
-                        default="14:53:33", help='the end time in the format HH:MM:SS')
+                        default=None, help='the end time in the format HH:MM:SS')
     parser.add_argument('--date', type=date_type,
                         default=None, help='the date time in the format DD/MM/YYYY')
     parser.add_argument('--plot_choice', type=str, choices=PLOT_OPTIONS,
@@ -232,51 +273,19 @@ if __name__ == '__main__':
                         default=0, help='Which LIDAR channel do you want data from?')
     parser.add_argument('--file_path', type=str, default='metoffice-lidar_faam_20150807_r0_B920_raw.nc',
                         help='Enter the path to the NetCDF file containing the LIDAAR data.')
-    # parser.add_argument('--sum', dest='accumulate', action='store_const',
-    #                     const=sum, default=max,
-    #                     help='sum the integers (default: find the max)')
-
-
-
 
     args = parser.parse_args()
     file_path = args.file_path
-    lidar_data = lidar.lidar(file_path)
     date_string = args.date
-
-    # if date_string == None:
-    #     print("String was none")
-    #     time_0 = lidar_data['Time'][0]
-    #     date = datetime.utcfromtimestamp(time_0.item())
-    # else:
-    #     date = datetime.strptime(date_string, "%d/%m/%Y")
-    #     print("String was not none.")
-    #
-    # start_string = args.start
-    # if start_string == None:
-    #     print("start String was none")
-    #     start_epoch = lidar_data['Time'][0]
-    #     start_moment = moment_maker(start_epoch)
-    # else:
-    #     start_epoch = epoch_maker(start_string)
-    #     start_moment = moment_maker(start_epoch)
-    #     print("start String was not none.")
-
-    # print(args.accumulate(args.integers))
-
-    end = args.end
-
+    start_string = args.start
+    end_string = args.end
     plot_choice = args.plot_choice
     channel = args.channel
-    print(6+channel)
-    # time = args.time
-    # print(time)
 
 
-    # print(start_string)
-    # print(end)
-    # print(date)
-    # print(plot_choice)
+
+
+
     #
     # print(start_string < end)
     #
@@ -285,8 +294,10 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.2)
-    processor = GUI_processor()
+
+    processor = GUI_processor(start_string=start_string, end_string=end_string)
     processor.plotter()
+
     # processor.plotter(start_string, end, channel=channel, plot_choice=plot_choice)
     callback = Index()
     axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
@@ -298,3 +309,49 @@ if __name__ == '__main__':
 
     print("Near the end")
     plt.show()
+
+#     (gradLi2)
+#     C:\Users\lukec\OneDrive\Documents\GitHub\ez - lidar - python > python
+#     GUI.py - -start
+#     "14:00:00" - -end
+#     "14:30:00"
+#     ['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattr__',
+#      '__getattribute__', '__getitem__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__',
+#      '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__',
+#      '__str__', '__subclasshook__', '__weakref__', '_range_correction', '_trigger', '_view', 'add_raw', 'aux', 'create',
+#      'createCurtainNC', 'fltno', 'get_aux', 'get_img', 'get_prof', 'get_ratio', 'get_raw_indexes', 'get_rc',
+#      'get_rc_corr', 'getprofile', 'make_curtain', 'make_img', 'make_jpg', 'maxheight', 'merge_aux', 'ncfolder',
+#      'range_correction', 'rawfolder', 'rc_div', 'rebuild_raw', 'trigger', 'view', 'write_dims', 'write_time']
+#     {}
+#     String
+#     was
+#     none
+#     start
+#     String
+#     was
+#     not none.
+#     End
+#     String
+#     was
+#     not none.
+#     Traceback(most
+#     recent
+#     call
+#     last):
+#     File
+#     "GUI.py", line
+#     295, in < module >
+#     processor = GUI_processor(start_string=start_string, end_string=start_string)
+# File
+# "GUI.py", line
+# 67, in __init__
+# raise ValueError("End must be greater than start.")
+# ValueError: End
+# must
+# be
+# greater
+# than
+# start.
+#
+# (gradLi2)
+# C:\Users\lukec\OneDrive\Documents\GitHub\ez - lidar - python >

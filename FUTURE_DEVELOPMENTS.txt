@@ -7,3 +7,9 @@ Maybe make date a global variable?
 When the data is first opened give an indication of what the date and time range would be.
 
 Maybe stop LIDAR printing all of its information to the command line every time it is defined.
+
+A method to change the start and the end of the GUI_processor which includes a check to make sure they're in the
+right order.
+
+be able to change moment and plot again
+start making tests
