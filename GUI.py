@@ -17,11 +17,11 @@ import re
 import warnings
 
 
-lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
-time_0 = lidar_data['Time'][0]
-date = datetime.utcfromtimestamp(time_0.item())
-start_moment = 200
-end_moment = 400
+# lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
+# time_0 = lidar_data['Time'][0]
+# date = datetime.utcfromtimestamp(time_0.item())
+# start_moment = 200
+# end_moment = 400
 PLOT_OPTIONS =  {'LINEAR', 'CONTOURF', 'PCOLOR', 'PCOLORMESH'}
 VALID_CHANNELS = {0, 1, 2}
 
@@ -29,146 +29,151 @@ VALID_CHANNELS = {0, 1, 2}
 # full_altitude = lidar_data['Altitude (m)'][:].data
 height_correction = 1.5 * np.arange(12148)
 
-# using the mask option might avoid misrepresenting data, but it causes some warnings when using pcorlormesh
-# the warnings don't seem to happen with pcorlor, not sure about contourf
-def z_maker(x, y, channel = 0):
-    data = lidar_data.profile[channel][x:y].data.clip(0)
-    data_m = ma.masked_invalid(data)
-    return data_m
-    # return np.nan_to_num(lidar_data.profile[channel][x:y].data.clip(0))
+class GUI_processor:
+    def __init__(self, file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc', start_moment=200, end_moment=400):
+        """
+        The default folder should be 'metoffice-lidar_faam_20150807_r0_B920_raw.nc'
+        """
+        lidar_data = lidar.lidar(file_path)
+        start_moment = start_moment
+        end_moment = end_moment
 
-def height_maker(x, y, z):
-    altitude = lidar_data['Altitude (m)'][x:y].data
-    #altitude = full_altitude[x:y]
-    altitude_array = np.empty_like(z)
-    for j in range(0,len(z[0])):
-        altitude_array[:,j] = altitude[j] - height_correction
-    altitude_array = np.nan_to_num(altitude_array.clip(0))
-    #altitude_array = altitude_array.clip(0)
-    #height = ma.masked_invalid(altitude_array)
-    return altitude_array
+    def z_maker(x, y, channel=0):
+        """"
+        using the mask option might avoid misrepresenting data, but it causes some warnings when using
+        pcorlormeshthe warnings don't seem to happen with pcorlor, not sure about contourf
+        """
+        data = lidar_data.profile[channel][x:y].data.clip(0)
+        data_m = ma.masked_invalid(data)
+        return data_m
+        # return np.nan_to_num(lidar_data.profile[channel][x:y].data.clip(0))
 
-def time_maker(x, y, z):
-    time = lidar_data['Time'][x:y].data
-    time_array = np.empty_like(z)
-    for j in range(0,len(z)):
-        for i in range(0, len(z[j])):
-            time_array[j,i] = time[i]
-    mpl_time = dates.epoch2num(time_array)
-    return mpl_time
+    def height_maker(x, y, z):
+        """
+        This uses information from Dave that they all go down by the same amount.
+        """
+        altitude = lidar_data['Altitude (m)'][x:y].data
+        # altitude = full_altitude[x:y]
+        altitude_array = np.empty_like(z)
+        for j in range(0, len(z[0])):
+            altitude_array[:, j] = altitude[j] - height_correction
+        altitude_array = np.nan_to_num(altitude_array.clip(0))
+        # altitude_array = altitude_array.clip(0)
+        # height = ma.masked_invalid(altitude_array)
+        return altitude_array
 
-def moment_maker(epoch_time):
-    time_array = lidar_data['Time'][:].data
-    if epoch_time < time_array.min():
-        print(str(epoch_time) + " < " + str(time_array.min()))
-        warnings.warn("A given date and time is earlier "
-                      "than the experiment period", Warning)
-        return 0
-    elif epoch_time > time_array.max():
-        print(str(epoch_time) + " > " + str(time_array.max()))
-        warnings.warn("A given date and time is later "
-                      "than the experiment period", Warning)
-        return -1
-    else:
-        index_array = np.argwhere(time_array <= epoch_time)
-        index = index_array.max()
-        return index
+    def time_maker(x, y, z):
+        time = lidar_data['Time'][x:y].data
+        time_array = np.empty_like(z)
+        for j in range(0, len(z)):
+            for i in range(0, len(z[j])):
+                time_array[j, i] = time[i]
+        mpl_time = dates.epoch2num(time_array)
+        return mpl_time
 
-def epoch_maker(time_string):
-    time_dt = datetime.strptime(time_string, "%H:%M:%S").time()
-    #
-    datetime_dt = datetime.combine(date, time_dt)
-    timestamp = datetime.timestamp(datetime_dt.replace(tzinfo=timezone.utc))
-    return timestamp
+    def moment_maker(epoch_time):
+        time_array = lidar_data['Time'][:].data
+        if epoch_time < time_array.min():
+            print(str(epoch_time) + " < " + str(time_array.min()))
+            warnings.warn("A given date and time is earlier "
+                          "than the experiment period", Warning)
+            return 0
+        elif epoch_time > time_array.max():
+            print(str(epoch_time) + " > " + str(time_array.max()))
+            warnings.warn("A given date and time is later "
+                          "than the experiment period", Warning)
+            return -1
+        else:
+            index_array = np.argwhere(time_array <= epoch_time)
+            index = index_array.max()
+            return index
 
-def start_end_maker(start_string, end_string):
-    start_e = epoch_maker(start_string)
-    end_e = epoch_maker(end_string)
-    print("Start is " + str(start_e))
-    print("End is " + str(end_e))
-    start = moment_maker(start_e)
-    end = moment_maker(end_e)
-    return (start, end)
+    def epoch_maker(time_string):
+        time_dt = datetime.strptime(time_string, "%H:%M:%S").time()
+        #
+        datetime_dt = datetime.combine(date, time_dt)
+        timestamp = datetime.timestamp(datetime_dt.replace(tzinfo=timezone.utc))
+        return timestamp
 
-def time_type(s):
-    pat = re.compile("([0-1]?\d|2[0-3]):([0-5]?\d):([0-5]?\d)")
-    if not pat.fullmatch(s):
-        raise argparse.ArgumentTypeError("Please enter a valid time in the format HH:MM:SS.")
-    return s
+    def start_end_maker(start_string, end_string):
+        start_e = epoch_maker(start_string)
+        end_e = epoch_maker(end_string)
+        print("Start is " + str(start_e))
+        print("End is " + str(end_e))
+        start = moment_maker(start_e)
+        end = moment_maker(end_e)
+        return (start, end)
 
-def date_type(s):
-    pat = re.compile("^((([0-2]?\d|3[0-1])/(0?[1,3,5,7,8]|1[0,2]))"
-                     "|(([0-2]?\d|30)/(0?[4,6,9]|11))"
-                     "|(([0-2]?\d)/(0?2)))"
-                     "/\d\d\d\d$")
-    if not pat.fullmatch(s):
-        raise argparse.ArgumentTypeError("Please enter a valid date in the format DD/MM/YYYY.")
-    return s
 
-# def time_quick_maker(x,y,z):
-#     time = m_time[x:y]
-#     time_array = np.empty_like(z)
-#     for j in range(0,len(z)):
-#         for i in range(0, len(z[j])):
-#             time_array[j,i] = time[i]
-#     return time_array
+    # def time_quick_maker(x,y,z):
+    #     time = m_time[x:y]
+    #     time_array = np.empty_like(z)
+    #     for j in range(0,len(z)):
+    #         for i in range(0, len(z[j])):
+    #             time_array[j,i] = time[i]
+    #     return time_array
 
-# full_z = z_maker(0, len(lidar_data.profile[0][:].data[0]))
-# full_height = height_maker(0, len(lidar_data.profile[0][:].data[0]), full_z)
-# def height_quick_maker(x,y):
-#     return full_height[:, x:y]
+    # full_z = z_maker(0, len(lidar_data.profile[0][:].data[0]))
+    # full_height = height_maker(0, len(lidar_data.profile[0][:].data[0]), full_z)
+    # def height_quick_maker(x,y):
+    #     return full_height[:, x:y]
 
-#contour and contourf are slow and contour leaves white space
-#pcolor is slow
-def plotter(start_time="14:13:33", end_time = "14:20:30", channel=0, plot_choice="PCOLORMESH"):
-    if plot_choice not in PLOT_OPTIONS:
-        raise ValueError("plot_choice must be one of {}.".format(PLOT_OPTIONS))
-    if channel not in VALID_CHANNELS:
-        raise ValueError("channel must be one of {}.".format(PLOT_OPTIONS))
-    # pcolor and pcolormesh could use time_tall
-    (start, end) = start_end_maker(start_time, end_time)
-    # start = start_end[0]
-    # end = start_end[1]
-    length = lidar_data['Time'][:].data.shape[0]
-    # make sure it's modulo the right value
-    # ask on stack overflow if there's a more effecient way of doing this
-    if start % length >= end % length:
-        raise ValueError("End must be greater than start.")
-    plt.gcf()
-    z = z_maker(start, end, channel)
-    time = dates.epoch2num(lidar_data['Time'][start:end].data)
-    altitude = lidar_data['Altitude (m)'][start:end].data
-    #altitude = full_altitude[start:end]
-    height = height_maker(start, end, z)
-    #height = height_quick_maker(start, end)
-    if ~np.isnan(np.nanmax(altitude)):
-        plt.ylim(0, np.nanmax(altitude) * 1.1)
-    plt.ylabel('Height (m)')
-    plt.xlabel('time')
-    print(plot_choice)
-    if plot_choice == "PCOLOR":
-        print("It is pcolor")
-        contour_p = plt.pcolor(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
-    elif plot_choice == "LINEAR":
-        print("It is linear")
-        contour_p = plt.pcolormesh(time, height, z, vmax=0.0007)
-    elif plot_choice == "CONTOURF":
-        print("It is contourf")
-        time_tall = time_maker(start, end, z)
-        contour_p = plt.contourf(time_tall, height, z, locator=ticker.LogLocator())
-    else:
-        print("It is log")
-        contour_p = plt.pcolormesh(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
-    line_p = plt.plot(time, altitude, color='black', linewidth=2)
-    myFmt = dates.DateFormatter('%H:%M')
-    ax.xaxis.set_major_formatter(myFmt)
-    plt.colorbar(contour_p)
+    # contour and contourf are slow and contour leaves white space
+    # pcolor is slow
+    def plotter(start_time="14:13:33", end_time="14:20:30", channel=0, plot_choice="PCOLORMESH"):
+        # if plot_choice not in PLOT_OPTIONS:
+        #     raise ValueError("plot_choice must be one of {}.".format(PLOT_OPTIONS))
+        # if channel not in VALID_CHANNELS:
+        #     raise ValueError("channel must be one of {}.".format(PLOT_OPTIONS))
+        # # pcolor and pcolormesh could use time_tall
+        # (start, end) = start_end_maker(start_time, end_time)
+        # # start = start_end[0]
+        # # end = start_end[1]
+        # length = lidar_data['Time'][:].data.shape[0]
+        # # make sure it's modulo the right value
+        # # ask on stack overflow if there's a more effecient way of doing this
+        # if start % length >= end % length:
+        #     raise ValueError("End must be greater than start.")
+        # start = start_moment
+        # end = end_moment
+        start = 400
+        end = 600
+        plt.gcf()
+        z = GUI_processor.z_maker(start, end, channel)
+        time = dates.epoch2num(lidar_data['Time'][start:end].data)
+        altitude = lidar_data['Altitude (m)'][start:end].data
+        # altitude = full_altitude[start:end]
+        height = GUI_processor.height_maker(start, end, z)
+        # height = height_quick_maker(start, end)
+        if ~np.isnan(np.nanmax(altitude)):
+            plt.ylim(0, np.nanmax(altitude) * 1.1)
+        plt.ylabel('Height (m)')
+        plt.xlabel('time')
+        print(plot_choice)
+        if plot_choice == "PCOLOR":
+            print("It is pcolor")
+            contour_p = plt.pcolor(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
+        elif plot_choice == "LINEAR":
+            print("It is linear")
+            contour_p = plt.pcolormesh(time, height, z, vmax=0.0007)
+        elif plot_choice == "CONTOURF":
+            print("It is contourf")
+            time_tall = time_maker(start, end, z)
+            contour_p = plt.contourf(time_tall, height, z, locator=ticker.LogLocator())
+        else:
+            print("It is log")
+            contour_p = plt.pcolormesh(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
+        line_p = plt.plot(time, altitude, color='black', linewidth=2)
+        myFmt = dates.DateFormatter('%H:%M')
+        ax.xaxis.set_major_formatter(myFmt)
+        plt.colorbar(contour_p)
+
 
 class Index(object):
     def next(self, event):
         print(ax.xaxis)
         print('start')
-        #print(contour_p.get_array())
+        # print(contour_p.get_array())
         plt.clf()
         # plt.cla() just clears the button
         # https://stackoverflow.com/questions/17085711/plot-to-specific-axes-in-matplotlib
@@ -188,8 +193,26 @@ class Index(object):
     def prev(self, event):
         print("Testing testing 123")
 
+def time_type(s):
+    """
+    This is a data type to ensure users enter the time correctly.
+    """
+    pat = re.compile("([0-1]?\d|2[0-3]):([0-5]?\d):([0-5]?\d)")
+    if not pat.fullmatch(s):
+        raise argparse.ArgumentTypeError("Please enter a valid time in the format HH:MM:SS.")
+    return s
 
-
+def date_type(s):
+    """
+    This is a data type to ensure users enter the date correctly. It cannot currently account for leap years.
+    """
+    pat = re.compile("^((([0-2]?\d|3[0-1])/(0?[1,3,5,7,8]|1[0,2]))"
+                     "|(([0-2]?\d|30)/(0?[4,6,9]|11))"
+                     "|(([0-2]?\d)/(0?2)))"
+                     "/\d\d\d\d$")
+    if not pat.fullmatch(s):
+        raise argparse.ArgumentTypeError("Please enter a valid date in the format DD/MM/YYYY.")
+    return s
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Enter values for LIDAR processing.',
@@ -221,23 +244,23 @@ if __name__ == '__main__':
     lidar_data = lidar.lidar(file_path)
     date_string = args.date
 
-    if date_string == None:
-        print("String was none")
-        time_0 = lidar_data['Time'][0]
-        date = datetime.utcfromtimestamp(time_0.item())
-    else:
-        date = datetime.strptime(date_string, "%d/%m/%Y")
-        print("String was not none.")
-
-    start_string = args.start
-    if start_string == None:
-        print("start String was none")
-        start_epoch = lidar_data['Time'][0]
-        start_moment = moment_maker(start_epoch)
-    else:
-        start_epoch = epoch_maker(start_string)
-        start_moment = moment_maker(start_epoch)
-        print("start String was not none.")
+    # if date_string == None:
+    #     print("String was none")
+    #     time_0 = lidar_data['Time'][0]
+    #     date = datetime.utcfromtimestamp(time_0.item())
+    # else:
+    #     date = datetime.strptime(date_string, "%d/%m/%Y")
+    #     print("String was not none.")
+    #
+    # start_string = args.start
+    # if start_string == None:
+    #     print("start String was none")
+    #     start_epoch = lidar_data['Time'][0]
+    #     start_moment = moment_maker(start_epoch)
+    # else:
+    #     start_epoch = epoch_maker(start_string)
+    #     start_moment = moment_maker(start_epoch)
+    #     print("start String was not none.")
 
     # print(args.accumulate(args.integers))
 
@@ -250,21 +273,21 @@ if __name__ == '__main__':
     # print(time)
 
 
-    print(start_string)
-    print(end)
-    print(date)
-    print(plot_choice)
-
-    print(start_string < end)
-
-    if end < start_string:
-        raise ValueError("Start must come before end.")
+    # print(start_string)
+    # print(end)
+    # print(date)
+    # print(plot_choice)
+    #
+    # print(start_string < end)
+    #
+    # if end < start_string:
+    #     raise ValueError("Start must come before end.")
 
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.2)
-
-    plotter(start_string, end, channel=channel, plot_choice=plot_choice)
-
+    processor = GUI_processor()
+    processor.plotter()
+    # processor.plotter(start_string, end, channel=channel, plot_choice=plot_choice)
     callback = Index()
     axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
     axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
