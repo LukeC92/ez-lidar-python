@@ -18,6 +18,10 @@ import warnings
 
 
 lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
+time_0 = lidar_data['Time'][0]
+date = datetime.utcfromtimestamp(time_0.item())
+start_moment = 200
+end_moment = 400
 PLOT_OPTIONS =  {'LINEAR', 'CONTOURF', 'PCOLOR', 'PCOLORMESH'}
 VALID_CHANNELS = {0, 1, 2}
 
@@ -125,12 +129,10 @@ def plotter(start_time="14:13:33", end_time = "14:20:30", channel=0, plot_choice
     (start, end) = start_end_maker(start_time, end_time)
     # start = start_end[0]
     # end = start_end[1]
-    print(lidar_data['Time'][:].data.shape[0])
-    print(start)
-    print(start % lidar_data['Time'][:].data.shape[0])
-    print(end)
-    print(end % lidar_data['Time'][:].data.shape[0])
-    if start % lidar_data['Time'][:].data.shape[0] >= end % lidar_data['Time'][:].data.shape[0]:
+    length = lidar_data['Time'][:].data.shape[0]
+    # make sure it's modulo the right value
+    # ask on stack overflow if there's a more effecient way of doing this
+    if start % length >= end % length:
         raise ValueError("End must be greater than start.")
     plt.gcf()
     z = z_maker(start, end, channel)
@@ -227,9 +229,18 @@ if __name__ == '__main__':
         date = datetime.strptime(date_string, "%d/%m/%Y")
         print("String was not none.")
 
+    start_string = args.start
+    if start_string == None:
+        print("start String was none")
+        start_epoch = lidar_data['Time'][0]
+        start_moment = moment_maker(start_epoch)
+    else:
+        start_epoch = epoch_maker(start_string)
+        start_moment = moment_maker(start_epoch)
+        print("start String was not none.")
 
     # print(args.accumulate(args.integers))
-    start = args.start
+
     end = args.end
 
     plot_choice = args.plot_choice
@@ -239,20 +250,20 @@ if __name__ == '__main__':
     # print(time)
 
 
-    print(start)
+    print(start_string)
     print(end)
     print(date)
     print(plot_choice)
 
-    print(start < end)
+    print(start_string < end)
 
-    if end < start:
+    if end < start_string:
         raise ValueError("Start must come before end.")
 
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.2)
 
-    plotter(start, end, channel=channel, plot_choice=plot_choice)
+    plotter(start_string, end, channel=channel, plot_choice=plot_choice)
 
     callback = Index()
     axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
