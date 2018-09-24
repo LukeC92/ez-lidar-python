@@ -13,3 +13,13 @@ right order.
 
 be able to change moment and plot again
 start making tests
+
+the date shouldn't be able to change? Or if the it does then everything else needs to update?
+Really the date probably corresponds to a data file.
+
+
+Make string type and actual type that can be used elsewhere.
+
+Rewrite the epoch errors so they start with the explanation.
+
+some of the errors might be better in the try else format

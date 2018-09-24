@@ -24,6 +24,7 @@ import warnings
 # end_moment = 400
 PLOT_OPTIONS =  {'LINEAR', 'CONTOURF', 'PCOLOR', 'PCOLORMESH'}
 VALID_CHANNELS = {0, 1, 2}
+time_pattern = re.compile(r"([0-1]?\d|2[0-3]):([0-5]?\d):(\d?\d)")
 
 # m_time = dates.epoch2num(lidar_data['Time'][:].data)
 # full_altitude = lidar_data['Altitude (m)'][:].data
@@ -46,8 +47,8 @@ class GUI_processor:
 
         if start_string == None:
             print("start String was none")
-            self.start_epoch = lidar_data['Time'][0]
-            self.start_moment = 0
+            self.start_epoch = self.lidar_data['Time'][0]
+            self.start_moment = 1000
         else:
             self.start_epoch = self.epoch_maker(start_string)
             self.start_moment = self.moment_maker(self.start_epoch)
@@ -55,8 +56,8 @@ class GUI_processor:
 
         if end_string == None:
             print("End String was none")
-            end_epoch = lidar_data['Time'][-1]
-            self.end_moment = -1
+            end_epoch = self.lidar_data['Time'][-1]
+            self.end_moment = 1200
         else:
             end_epoch = self.epoch_maker(end_string)
             self.end_moment = self.moment_maker(end_epoch)
@@ -76,11 +77,15 @@ class GUI_processor:
         else:
             raise ValueError("channel must be one of {}.".format(VALID_CHANNELS))
 
-    def z_maker(self, x, y, channel=None):
+    def z_maker(self, x=None, y=None, channel=None):
         """"
         using the mask option might avoid misrepresenting data, but it causes some warnings when using
         pcorlormeshthe warnings don't seem to happen with pcorlor, not sure about contourf
         """
+        if x == None:
+            x = self.start_moment
+        if y == None:
+            y = self.end_moment
         if channel == None:
             channel = self.channel
         data = self.lidar_data.profile[channel][x:y].data.clip(0)
@@ -90,7 +95,11 @@ class GUI_processor:
 
     def height_maker(self, x, y, z):
         """
-        This uses information from Dave that they all go down by the same amount.
+
+        :param x: The start moment of the sample.
+        :param y: The end moment of the sample.
+        :param z: The lidar data who's shape the result will be based on.
+        :return: A numpy array of heights of the same shape as a a provided array of LIDAR data.
         """
         altitude = self.lidar_data['Altitude (m)'][x:y].data
         # altitude = full_altitude[x:y]
@@ -102,8 +111,15 @@ class GUI_processor:
         # height = ma.masked_invalid(altitude_array)
         return altitude_array
 
-    def time_maker(x, y, z):
-        time = lidar_data['Time'][x:y].data
+    def time_maker(self, x, y, z):
+        """
+
+        :param x: The start moment of the sample.
+        :param y: The end moment of the sample.
+        :param z: The lidar data who's shape the result will be based on.
+        :return: A numpy array of times of the same shape as a a provided array of LIDAR data.
+        """
+        time = self.lidar_data['Time'][x:y].data
         time_array = np.empty_like(z)
         for j in range(0, len(z)):
             for i in range(0, len(z[j])):
@@ -112,6 +128,12 @@ class GUI_processor:
         return mpl_time
 
     def moment_maker(self, epoch_time):
+        """
+
+        :param epoch_time: A unix time in the UTC timezone which will be transformed into a moment
+        within the LIDAR experiment.
+        :return: A moment in the experiment corresponding to the unix time.
+        """
         time_array = self.lidar_data['Time'][:].data
         if epoch_time < time_array.min():
             print(str(epoch_time) + " < " + str(time_array.min()))
@@ -134,6 +156,12 @@ class GUI_processor:
         :param time_string: A string representing a time in the format HH:MM:SS
         :return: The Unix time corresponding to the given string on the date lised at self.date_dt.
         """
+        if not isinstance(time_string, str):
+            raise TypeError("{} is not a string. Please ensure time_string is a string".format(time_string) +
+            " in the format HH:MM:SS.")
+        if not time_pattern.fullmatch(time_string):
+            raise ValueError("'{}' is not in the right format. Please ensure time_string is a".format(time_string) +
+            " string in the format HH:MM:SS.")
         time_dt = datetime.strptime(time_string, "%H:%M:%S").time()
         date_dt = self.date_dt
         datetime_dt = datetime.combine(date_dt, time_dt)
@@ -141,6 +169,18 @@ class GUI_processor:
         return timestamp
 
     def start_end_maker(self, start_string, end_string):
+        if not isinstance(start_string, str):
+            raise TypeError("{} is not a string. Please ensure start_string is a string".format(start_string) +
+            " in the format HH:MM:SS.")
+        if not time_pattern.fullmatch(start_string):
+            raise ValueError("'{}' is not in the right format. Please ensure start_string is a".format(start_string) +
+            " string in the format HH:MM:SS.")
+        if not isinstance(end_string, str):
+            raise TypeError("{} is not a string. Please ensure end_string is a string".format(end_string) +
+            " in the format HH:MM:SS.")
+        if not time_pattern.fullmatch(end_string):
+            raise ValueError("'{}' is not in the right format. Please ensure end_string is a".format(end_string) +
+            " string in the format HH:MM:SS.")
         start_e = self.epoch_maker(start_string)
         end_e = self.epoch_maker(end_string)
         print("Start is " + str(start_e))
@@ -201,7 +241,7 @@ class GUI_processor:
             contour_p = plt.pcolormesh(time, height, z, vmax=0.0007)
         elif plot_choice == "CONTOURF":
             print("It is contourf")
-            time_tall = time_maker(start, end, z)
+            time_tall = self.time_maker(start, end, z)
             contour_p = plt.contourf(time_tall, height, z, locator=ticker.LogLocator())
         else:
             print("It is log")
@@ -240,8 +280,7 @@ def time_type(s):
     """
     This is a data type to ensure users enter the time correctly.
     """
-    pat = re.compile("([0-1]?\d|2[0-3]):([0-5]?\d):([0-5]?\d)")
-    if not pat.fullmatch(s):
+    if not time_pattern.fullmatch(s):
         raise argparse.ArgumentTypeError("Please enter a valid time in the format HH:MM:SS.")
     return s
 
@@ -249,10 +288,10 @@ def date_type(s):
     """
     This is a data type to ensure users enter the date correctly. It cannot currently account for leap years.
     """
-    pat = re.compile("^((([0-2]?\d|3[0-1])/(0?[1,3,5,7,8]|1[0,2]))"
-                     "|(([0-2]?\d|30)/(0?[4,6,9]|11))"
-                     "|(([0-2]?\d)/(0?2)))"
-                     "/\d\d\d\d$")
+    pat = re.compile(r"^(((0?[1-9]|[1-2]\d|3[0-1])/(0?[1,3,5,7,8]|1[0,2]))"
+                     r"|((0?[1-9]|[1-2]\d|30)/(0?[4,6,9]|11))"
+                     r"|((0?[1-9]|[1-2]\d)/(0?2)))"
+                     r"/\d\d\d\d$")
     if not pat.fullmatch(s):
         raise argparse.ArgumentTypeError("Please enter a valid date in the format DD/MM/YYYY.")
     return s

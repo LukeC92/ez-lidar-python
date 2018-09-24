@@ -1,6 +1,15 @@
 import lidar
 import GUI
 import pytest
+import argparse
+import warnings
+import numpy
+
+@pytest.fixture
+def processor_setup():
+    return GUI.GUI_processor(start_string="15:00:00", end_string="15:30:00",
+                             file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
+
 
 lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
 
@@ -10,23 +19,203 @@ lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
 #https://docs.pytest.org/en/latest/
 #https://docs.python-guide.org/writing/tests/
 
-def inc(x):
-    return x + 1
+def test_valid_moment(processor_setup):
+    assert processor_setup.moment_maker(1438956604) == 601
 
+def test_low_moment_value(processor_setup):
+    assert processor_setup.moment_maker(1438947074) == 0
 
-def test_answer():
-    assert inc(3) == 4
+def test_low_moment_warning(processor_setup):
+    with pytest.warns(Warning, match='A given date and time is earlier than the experiment period'):
+        processor_setup.moment_maker(1438947074)
 
-def test_moment_maker():
-    assert GUI.moment_maker(1438956604) == 601
+def test_high_moment_value(processor_setup):
+    assert processor_setup.moment_maker(1438971879) == -1
 
-def test_zero_division():
-    with pytest.raises(ZeroDivisionError):
-        1 / 0
+def test_high_moment_warning(processor_setup):
+    with pytest.warns(Warning, match='A given date and time is later than the experiment period'):
+        processor_setup.moment_maker(1438971879)
 
-def test_recursion_depth():
-    with pytest.raises(RuntimeError) as excinfo:
-        def f():
-            f()
-        f()
-    assert 'maximum recursion' in str(excinfo.value)
+def test_epoch_maker(processor_setup):
+    assert processor_setup.epoch_maker("15:00:00") == 1438959600
+
+def test_epoch_type_error(processor_setup):
+    with pytest.raises(TypeError, match = " is not a string. Please ensure time_string is a string"
+                                          " in the format HH:MM:SS."):
+        processor_setup.epoch_maker(0)
+
+def test_epoch_value_error(processor_setup):
+    with pytest.raises(ValueError, match = " is not in the right format. Please ensure time_string is a string"
+                                          " in the format HH:MM:SS."):
+        processor_setup.epoch_maker("FOOBAR")
+
+def test_start_end_maker(processor_setup):
+    assert processor_setup.start_end_maker("15:00:00", "15:30:00") == (2025, 2689)
+
+def test_start_type_error(processor_setup):
+    with pytest.raises(TypeError, match = " is not a string. Please ensure start_string is a string"
+                                          " in the format HH:MM:SS."):
+        processor_setup.start_end_maker(0, "15:30:00")
+
+def test_start_value_error(processor_setup):
+    with pytest.raises(ValueError, match = " is not in the right format. Please ensure start_string is a string"
+                                          " in the format HH:MM:SS."):
+        processor_setup.start_end_maker("FOOBAR", "15:30:00")
+
+def test_end_type_error(processor_setup):
+    with pytest.raises(TypeError, match = " is not a string. Please ensure end_string is a string"
+                                          " in the format HH:MM:SS."):
+        processor_setup.start_end_maker("15:00:00", 0)
+
+def test_end_value_error(processor_setup):
+    with pytest.raises(ValueError, match = " is not in the right format. Please ensure end_string is a string"
+                                          " in the format HH:MM:SS."):
+        processor_setup.start_end_maker("15:00:00", "FOOBAR")
+
+def test_time_type_valied():
+    times = []
+    for i in range(0, 24):
+        for j in range(0, 60):
+            for k in range(0, 100):
+                times.append("{}:{}:{}".format(i, j, k))
+    for i in range(0, 10):
+        for j in range(0, 10):
+            for k in range(0, 10):
+                times.append("0{}:0{}:0{}".format(i, j, k))
+    #times = ["12:00:00", "19:0:0", "23:23:23"]
+    #results = GUI.time_type(times)
+    results = [GUI.time_type(i) for i in times]
+    assert times == results
+
+def test_time_type_invalid():
+    """
+    Note this
+    :return:
+    """
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid time in the format HH:MM:SS."):
+        GUI.time_type("24:00:00")
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid time in the format HH:MM:SS."):
+        GUI.time_type("12:61:00")
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid time in the format HH:MM:SS."):
+        GUI.time_type("12:00:100")
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid time in the format HH:MM:SS."):
+        GUI.time_type("FOOBAR")
+    with pytest.raises(TypeError):
+        GUI.time_type(120000)
+
+def test_date_type_valid():
+    """
+    Note this test currently expects 29 February to be a valid date regardless of whether the year is a leap year
+    or not. This reflects a current weakness in the code.
+    :return:
+    """
+    dates = ["31/01/2018", "31/1/2018", "01/01/2018", "1/01/2018",
+             "29/02/2018", "29/2/2018", "01/02/2018", "1/02/2018",
+             "31/03/2018", "31/3/2018", "01/03/2018", "1/03/2018",
+             "30/04/2018", "30/4/2018", "01/04/2018", "1/04/2018",
+             "31/05/2018", "31/5/2018", "01/05/2018", "1/05/2018",
+             "30/06/2018", "30/6/2018", "01/06/2018", "1/06/2018",
+             "31/07/2018", "31/7/2018", "01/07/2018", "1/07/2018",
+             "31/08/2018", "31/8/2018", "01/08/2018", "1/08/2018",
+             "30/09/2018", "30/9/2018", "01/09/2018", "1/09/2018",
+             "31/10/2018", "01/10/2018", "1/10/2018",
+             "30/11/2018", "01/11/2018", "1/11/2018",
+             "31/12/2018", "01/12/2018", "1/12/2018"]
+    results = [GUI.date_type(i) for i in dates]
+    assert dates == results
+
+def test_date_type_invalid():
+    invalid_dates = ["32/01/2018", "0/1/2018", "00/01/2018",
+                     "30/02/2018", "0/2/2018", "00/02/2018",
+                     "32/03/2018", "0/3/2018", "00/03/2018",
+                     "31/04/2018", "0/4/2018", "00/04/2018",
+                     "32/05/2018", "0/5/2018", "00/05/2018",
+                     "31/06/2018", "0/6/2018", "00/06/2018",
+                     "32/07/2018", "0/7/2018", "00/07/2018",
+                     "32/08/2018", "0/8/2018", "00/08/2018",
+                     "31/09/2018", "0/9/2018", "00/09/2018",
+                     "32/10/2018", "0/10/2018", "00/10/2018",
+                     "31/11/2018", "0/11/2018", "00/11/2018",
+                     "32/12/2018", "0/12/2018", "0/12/2018"]
+    with pytest.raises(TypeError):
+        GUI.date_type(15112018)
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type("FOOBAR")
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[0])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[1])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[2])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[3])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[4])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[5])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[6])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[7])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[8])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[9])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[10])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[11])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[12])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[13])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[14])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[15])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[16])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[17])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[18])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[19])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[20])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[21])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[22])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[23])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[24])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[25])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[26])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[27])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[28])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[29])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[30])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[31])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[32])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[33])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[34])
+    with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
+        GUI.date_type(invalid_dates[35])
+
+def test_z_type(processor_setup):
+    assert isinstance(processor_setup.z_maker(), numpy.ma.core.MaskedArray)
+
+def test_z_non_negative(processor_setup):
+    assert processor_setup.z_maker().all() >= 0
