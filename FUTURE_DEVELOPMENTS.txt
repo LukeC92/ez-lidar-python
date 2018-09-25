@@ -35,3 +35,20 @@ use jupyter to look at lengths
 the way the code is ordered it gets rid of the colorbar even while the pop up is up.
 
 make tests using the other sample file
+
+if contourf is desired could look into making colorbar behave
+
+test errors raised by processor init
+test that next and prev change start and end in the correct ways
+
+test that default lidar_data is  particular thing "==" isn't working
+
+state somewhere that start_epoch and end_epoch aren't currently used but
+thought they might be important in the future
+
+
+test init warnings and errors
+
+why does the order of the plot_choice error change while the channel error stays the same.
+
+

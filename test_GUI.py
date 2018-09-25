@@ -4,6 +4,7 @@ import pytest
 import argparse
 import warnings
 import numpy
+from datetime import datetime, time, timezone
 
 @pytest.fixture
 def processor_setup():
@@ -18,6 +19,29 @@ lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
 #http://pythontesting.net/framework/pytest/pytest-introduction/
 #https://docs.pytest.org/en/latest/
 #https://docs.python-guide.org/writing/tests/
+
+def test_processor_default():
+    processor = GUI.GUI_processor()
+    assert processor.length == 7150
+    assert processor.date_dt == datetime.utcfromtimestamp(1438947075.0).date()
+    assert processor.start_moment == 1000
+    assert processor.start_epoch == 1438947075.0
+    assert processor.end_moment == 1200
+    assert processor.end_epoch == 1438971878.0
+    assert processor.plot_choice == 'PCOLORMESH'
+    assert processor.channel == 0
+
+def test_processor_plot_choice_error():
+    with pytest.raises(ValueError, match="FOOBAR is not a valid plot choice. plot_choice must be one of"):
+        GUI.GUI_processor(plot_choice="FOOBAR")
+    with pytest.raises(ValueError, match="20 is not a valid plot choice. plot_choice must be one of"):
+        GUI.GUI_processor(plot_choice=20)
+
+def test_processor_channel_error():
+    with pytest.raises(ValueError, match="5 is not a valid channel. channel must be one of {0, 1, 2}."):
+        GUI.GUI_processor(channel = 5)
+    with pytest.raises(ValueError, match="FOOBAR is not a valid channel. channel must be one of {0, 1, 2}."):
+        GUI.GUI_processor(channel = "FOOBAR")
 
 def test_valid_moment(processor_setup):
     assert processor_setup.moment_maker(1438956604) == 601
