@@ -80,7 +80,7 @@ class GUI_processor:
     def generatePlot(self):
         self.fig, self.ax = plt.subplots()
         plt.subplots_adjust(bottom=0.2)
-        self.callback = Index()
+        self.callback = Index(self)
         self.axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
         self.axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
         self.bnext = Button(self.axnext, 'Next')
@@ -272,6 +272,9 @@ class GUI_processor:
 
 
 class Index(object):
+    def __init__(self, processor):
+        self.processor = processor
+
     def next(self, event):
         #print(ax.xaxis)
         print('start')

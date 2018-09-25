@@ -23,3 +23,9 @@ Make string type and actual type that can be used elsewhere.
 Rewrite the epoch errors so they start with the explanation.
 
 some of the errors might be better in the try else format
+
+make the addition be to the modulo
+set a limit using modulo
+feed processor into iterator mayber define it within processor probably not.
+
+clear the colorbar as part of the plotter function.
