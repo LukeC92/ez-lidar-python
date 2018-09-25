@@ -15,6 +15,7 @@ from datetime import datetime, time, timezone
 import argparse
 import re
 import warnings
+import win32api
 
 
 # lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
@@ -38,38 +39,32 @@ class GUI_processor:
         """
         self.lidar_data = lidar.lidar(file_path)
         if date_string == None:
-            print("String was none")
             time_0 = self.lidar_data['Time'][0]
             self.date_dt = datetime.utcfromtimestamp(time_0.item())
         else:
             self.date_dt = datetime.strptime(date_string, "%d/%m/%Y")
-            print("String was not none.")
 
         if start_string == None:
-            print("start String was none")
             self.start_epoch = self.lidar_data['Time'][0]
             self.start_moment = 1000
         else:
             self.start_epoch = self.epoch_maker(start_string)
             self.start_moment = self.moment_maker(self.start_epoch)
-            print("start String was not none.")
 
         if end_string == None:
-            print("End String was none")
             end_epoch = self.lidar_data['Time'][-1]
             self.end_moment = 1200
         else:
             end_epoch = self.epoch_maker(end_string)
             self.end_moment = self.moment_maker(end_epoch)
-            print("End String was not none.")
 
-        length = self.lidar_data['Time'][:].data.shape[0]
-        print(length)
-        print("Start is" + str(self.start_moment))
-        print("Start modulo is " + str(self.start_moment % length))
-        print("End is" + str(self.end_moment))
-        print("End modulo is " + str(self.end_moment % length))
-        if self.start_moment % length >= self.end_moment % length:
+        self.length = self.lidar_data['Time'][:].data.shape[0]
+        # print(self.length)
+        # print("Start is" + str(self.start_moment))
+        # print("Start modulo is " + str(self.start_moment % self.length))
+        # print("End is" + str(self.end_moment))
+        # print("End modulo is " + str(self.end_moment % self.length))
+        if self.start_moment % self.length >= self.end_moment % self.length:
             raise ValueError("End must be greater than start.")
 
         if channel in VALID_CHANNELS:
@@ -147,12 +142,12 @@ class GUI_processor:
         """
         time_array = self.lidar_data['Time'][:].data
         if epoch_time < time_array.min():
-            print(str(epoch_time) + " < " + str(time_array.min()))
+            # print(str(epoch_time) + " < " + str(time_array.min()))
             warnings.warn("A given date and time is earlier "
                           "than the experiment period", Warning)
             return 0
         elif epoch_time > time_array.max():
-            print(str(epoch_time) + " > " + str(time_array.max()))
+            #print(str(epoch_time) + " > " + str(time_array.max()))
             warnings.warn("A given date and time is later "
                           "than the experiment period", Warning)
             return -1
@@ -194,8 +189,8 @@ class GUI_processor:
             " string in the format HH:MM:SS.")
         start_e = self.epoch_maker(start_string)
         end_e = self.epoch_maker(end_string)
-        print("Start is " + str(start_e))
-        print("End is " + str(end_e))
+        #print("Start is " + str(start_e))
+        #print("End is " + str(end_e))
         start = self.moment_maker(start_e)
         end = self.moment_maker(end_e)
         return (start, end)
@@ -251,7 +246,6 @@ class GUI_processor:
             plt.ylim(0, np.nanmax(altitude) * 1.1)
         plt.ylabel('Height (m)')
         plt.xlabel('Time')
-        print(plot_choice)
         if plot_choice == "PCOLOR":
             print("It is pcolor")
             contour_p = plt.pcolor(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
@@ -276,55 +270,34 @@ class Index(object):
         self.processor = processor
 
     def next(self, event):
-        #print(ax.xaxis)
-        print('start')
-        processor.cb.remove()
-        # print(contour_p.get_array())
-        #plt.clf()
-        # fig = processor.fig
-        # im = fig.images
-        # cb = im[0].colorbar
-        # cb.remove()
-        print(processor.start_moment)
-        print(processor.end_moment)
-        processor.start_moment += 100
-        processor.end_moment += 100
-        print(processor.start_moment)
-        print(processor.end_moment)
-        plt.gcf()
-
-        #fig, ax = plt.subplots()
-        plt.subplots_adjust(bottom=0.2)
-        processor.plotter()
-
-        # processor.plotter(start_string, end, channel=channel, plot_choice=plot_choice)
-        # callback = Index()
-        # axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
-        # axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
-        # bnext = Button(axnext, 'Next')
-        # bnext.on_clicked(callback.next)
-        # bprev = Button(axprev, 'Previous')
-        # bprev.on_clicked(callback.prev)
-
-        print("Near the end")
-        plt.draw()
-        # plt.cla() just clears the button
-        # https://stackoverflow.com/questions/17085711/plot-to-specific-axes-in-matplotlib
-        # https://stackoverflow.com/questions/14254379/how-can-i-attach-a-pyplot-function-to-a-figure-instance/14261698#14261698
-        # could those links help?
-        # start = 2000
-        # end = 2200
-        # start += 100
-        # end += 100
-        # z_test = z_maker(start, end)
-        # time_test = datetime_array[start:end]
-        # height_test = height_quick_maker(start, end)
-        # c = plt.pcolormesh(time_test,height_test,z_test, norm=colors.LogNorm(vmin=0.000001, vmax=z_test.max()))
-        # plt.colorbar(c)
-        # plt.draw()
+        if (processor.end_moment % processor.length) >= (processor.length-1):
+            win32api.MessageBox(0, 'You have reached the end of the data.', 'End of Data')
+        else:
+            if processor.length-1 > processor.end_moment % processor.length > processor.length-101:
+                processor.start_moment = (processor.start_moment % processor.length) + \
+                                         ((processor.length - 1) - (processor.end_moment % processor.length))
+                processor.end_moment = processor.length - 1
+            else:
+                processor.start_moment = processor.start_moment % processor.length + 100
+                processor.end_moment = processor.end_moment % processor.length + 100
+            processor.cb.remove()
+            processor.plotter()
+            plt.draw()
 
     def prev(self, event):
-        print("Testing testing 123")
+        if (processor.start_moment % processor.length) <= (0):
+            win32api.MessageBox(0, 'You have reached the end of the data.', 'End of Data')
+        else:
+            if 0 < processor.start_moment % processor.length < 100:
+                processor.end_moment = (processor.end_moment % processor.length) - \
+                                       (processor.start_moment % processor.length)
+                processor.start_moment = 0
+            else:
+                processor.start_moment = processor.start_moment % processor.length - 100
+                processor.end_moment = processor.end_moment % processor.length - 100
+            processor.cb.remove()
+            processor.plotter()
+            plt.draw()
 
 def time_type(s):
     """
@@ -375,8 +348,7 @@ if __name__ == '__main__':
 
 
 
-    #
-    # print(start_string < end)
+
     #
     # if end < start_string:
     #     raise ValueError("Start must come before end.")

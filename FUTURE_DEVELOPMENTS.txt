@@ -29,3 +29,7 @@ set a limit using modulo
 feed processor into iterator mayber define it within processor probably not.
 
 clear the colorbar as part of the plotter function.
+
+use jupyter to look at lengths
+
+the way the code is ordered it gets rid of the colorbar even while the pop up is up.
