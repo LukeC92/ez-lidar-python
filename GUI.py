@@ -17,18 +17,9 @@ import re
 import warnings
 import win32api
 
-
-# lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
-# time_0 = lidar_data['Time'][0]
-# date = datetime.utcfromtimestamp(time_0.item())
-# start_moment = 200
-# end_moment = 400
 PLOT_OPTIONS =  {'LINEAR', 'CONTOURF', 'PCOLOR', 'PCOLORMESH'}
 VALID_CHANNELS = {0, 1, 2}
 time_pattern = re.compile(r"([0-1]?\d|2[0-3]):([0-5]?\d):(\d?\d)")
-
-# m_time = dates.epoch2num(lidar_data['Time'][:].data)
-# full_altitude = lidar_data['Altitude (m)'][:].data
 height_correction = 1.5 * np.arange(12148)
 
 class GUI_processor:
@@ -37,12 +28,13 @@ class GUI_processor:
         """
         The default folder should be 'metoffice-lidar_faam_20150807_r0_B920_raw.nc'
         """
+        self.generatePlot()
         self.lidar_data = lidar.lidar(file_path)
         if date_string == None:
             time_0 = self.lidar_data['Time'][0]
-            self.date_dt = datetime.utcfromtimestamp(time_0.item())
+            self.date_dt = datetime.utcfromtimestamp(time_0.item()).date()
         else:
-            self.date_dt = datetime.strptime(date_string, "%d/%m/%Y")
+            self.date_dt = datetime.strptime(date_string, "%d/%m/%Y").date()
 
         if start_string == None:
             self.start_epoch = self.lidar_data['Time'][0]
@@ -73,6 +65,9 @@ class GUI_processor:
             raise ValueError("channel must be one of {}.".format(VALID_CHANNELS))
 
     def generatePlot(self):
+        """
+        Sets up the plotting space.
+        """
         self.fig, self.ax = plt.subplots()
         plt.subplots_adjust(bottom=0.2)
         self.callback = Index(self)
@@ -82,6 +77,68 @@ class GUI_processor:
         self.bnext.on_clicked(self.callback.next)
         self.bprev = Button(self.axprev, 'Previous')
         self.bprev.on_clicked(self.callback.prev)
+
+    def epoch_maker(self, time_string):
+        """
+
+        :param time_string: A string representing a time in the format HH:MM:SS
+        :return: The Unix time corresponding to the given string on the date lised at self.date_dt.
+        """
+        if not isinstance(time_string, str):
+            raise TypeError("{} is not a string. Please ensure time_string is a string".format(time_string) +
+            " in the format HH:MM:SS.")
+        if not time_pattern.fullmatch(time_string):
+            raise ValueError("'{}' is not in the right format. Please ensure time_string is a".format(time_string) +
+            " string in the format HH:MM:SS.")
+        time_dt = datetime.strptime(time_string, "%H:%M:%S").time()
+        date_dt = self.date_dt
+        datetime_dt = datetime.combine(date_dt, time_dt)
+        timestamp = datetime.timestamp(datetime_dt.replace(tzinfo=timezone.utc))
+        return timestamp
+
+    def moment_maker(self, epoch_time):
+        """
+
+        :param epoch_time: A unix time in the UTC timezone which will be transformed into a moment
+        within the LIDAR experiment.
+        :return: A moment in the experiment corresponding to the unix time.
+        """
+        time_array = self.lidar_data['Time'][:].data
+        if epoch_time < time_array.min():
+            # print(str(epoch_time) + " < " + str(time_array.min()))
+            warnings.warn("A given date and time is earlier "
+                          "than the experiment period", Warning)
+            return 0
+        elif epoch_time > time_array.max():
+            #print(str(epoch_time) + " > " + str(time_array.max()))
+            warnings.warn("A given date and time is later "
+                          "than the experiment period", Warning)
+            return -1
+        else:
+            index_array = np.argwhere(time_array <= epoch_time)
+            index = index_array.max()
+            return index
+
+    def start_end_maker(self, start_string, end_string):
+        if not isinstance(start_string, str):
+            raise TypeError("{} is not a string. Please ensure start_string is a string".format(start_string) +
+            " in the format HH:MM:SS.")
+        if not time_pattern.fullmatch(start_string):
+            raise ValueError("'{}' is not in the right format. Please ensure start_string is a".format(start_string) +
+            " string in the format HH:MM:SS.")
+        if not isinstance(end_string, str):
+            raise TypeError("{} is not a string. Please ensure end_string is a string".format(end_string) +
+            " in the format HH:MM:SS.")
+        if not time_pattern.fullmatch(end_string):
+            raise ValueError("'{}' is not in the right format. Please ensure end_string is a".format(end_string) +
+            " string in the format HH:MM:SS.")
+        start_e = self.epoch_maker(start_string)
+        end_e = self.epoch_maker(end_string)
+        #print("Start is " + str(start_e))
+        #print("End is " + str(end_e))
+        start = self.moment_maker(start_e)
+        end = self.moment_maker(end_e)
+        return (start, end)
 
     def z_maker(self, x=None, y=None, channel=None):
         """"
@@ -133,68 +190,6 @@ class GUI_processor:
         mpl_time = dates.epoch2num(time_array)
         return mpl_time
 
-    def moment_maker(self, epoch_time):
-        """
-
-        :param epoch_time: A unix time in the UTC timezone which will be transformed into a moment
-        within the LIDAR experiment.
-        :return: A moment in the experiment corresponding to the unix time.
-        """
-        time_array = self.lidar_data['Time'][:].data
-        if epoch_time < time_array.min():
-            # print(str(epoch_time) + " < " + str(time_array.min()))
-            warnings.warn("A given date and time is earlier "
-                          "than the experiment period", Warning)
-            return 0
-        elif epoch_time > time_array.max():
-            #print(str(epoch_time) + " > " + str(time_array.max()))
-            warnings.warn("A given date and time is later "
-                          "than the experiment period", Warning)
-            return -1
-        else:
-            index_array = np.argwhere(time_array <= epoch_time)
-            index = index_array.max()
-            return index
-
-    def epoch_maker(self, time_string):
-        """
-
-        :param time_string: A string representing a time in the format HH:MM:SS
-        :return: The Unix time corresponding to the given string on the date lised at self.date_dt.
-        """
-        if not isinstance(time_string, str):
-            raise TypeError("{} is not a string. Please ensure time_string is a string".format(time_string) +
-            " in the format HH:MM:SS.")
-        if not time_pattern.fullmatch(time_string):
-            raise ValueError("'{}' is not in the right format. Please ensure time_string is a".format(time_string) +
-            " string in the format HH:MM:SS.")
-        time_dt = datetime.strptime(time_string, "%H:%M:%S").time()
-        date_dt = self.date_dt
-        datetime_dt = datetime.combine(date_dt, time_dt)
-        timestamp = datetime.timestamp(datetime_dt.replace(tzinfo=timezone.utc))
-        return timestamp
-
-    def start_end_maker(self, start_string, end_string):
-        if not isinstance(start_string, str):
-            raise TypeError("{} is not a string. Please ensure start_string is a string".format(start_string) +
-            " in the format HH:MM:SS.")
-        if not time_pattern.fullmatch(start_string):
-            raise ValueError("'{}' is not in the right format. Please ensure start_string is a".format(start_string) +
-            " string in the format HH:MM:SS.")
-        if not isinstance(end_string, str):
-            raise TypeError("{} is not a string. Please ensure end_string is a string".format(end_string) +
-            " in the format HH:MM:SS.")
-        if not time_pattern.fullmatch(end_string):
-            raise ValueError("'{}' is not in the right format. Please ensure end_string is a".format(end_string) +
-            " string in the format HH:MM:SS.")
-        start_e = self.epoch_maker(start_string)
-        end_e = self.epoch_maker(end_string)
-        #print("Start is " + str(start_e))
-        #print("End is " + str(end_e))
-        start = self.moment_maker(start_e)
-        end = self.moment_maker(end_e)
-        return (start, end)
-
     # contour and contourf are slow and contour leaves white space
     # pcolor is slow
     def plotter(self, start=None, end=None, channel=0, plot_choice="PCOLORMESH"):
@@ -230,7 +225,7 @@ class GUI_processor:
         if start % length >= end % length:
             raise ValueError("End must be greater than start.")
         #plt.gcf()
-        self.fig
+        #self.fig
         self.ax.cla()
         plt.sca(self.ax)
 
@@ -344,20 +339,12 @@ if __name__ == '__main__':
     plot_choice = args.plot_choice
     channel = args.channel
 
+    #    def __init__(self, file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc', start_string=None, end_string=None,
+                 #date_string=None, channel=0):
 
-
-
-
-
-    #
-    # if end < start_string:
-    #     raise ValueError("Start must come before end.")
-
-    # fig, ax = plt.subplots()
-    # plt.subplots_adjust(bottom=0.2)
-
-    processor = GUI_processor(start_string=start_string, end_string=end_string)
-    processor.generatePlot()
+    processor = GUI_processor(file_path=file_path, start_string=start_string, end_string=end_string,
+                              date_string=date_string, channel=channel)
+#    processor.generatePlot()
     processor.plotter()
 
     # processor.plotter(start_string, end, channel=channel, plot_choice=plot_choice)

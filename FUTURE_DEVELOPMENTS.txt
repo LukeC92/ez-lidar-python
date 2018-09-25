@@ -33,3 +33,5 @@ clear the colorbar as part of the plotter function.
 use jupyter to look at lengths
 
 the way the code is ordered it gets rid of the colorbar even while the pop up is up.
+
+make tests using the other sample file
