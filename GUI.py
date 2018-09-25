@@ -77,6 +77,17 @@ class GUI_processor:
         else:
             raise ValueError("channel must be one of {}.".format(VALID_CHANNELS))
 
+    def generatePlot(self):
+        self.fig, self.ax = plt.subplots()
+        plt.subplots_adjust(bottom=0.2)
+        self.callback = Index()
+        self.axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
+        self.axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
+        self.bnext = Button(self.axnext, 'Next')
+        self.bnext.on_clicked(self.callback.next)
+        self.bprev = Button(self.axprev, 'Previous')
+        self.bprev.on_clicked(self.callback.prev)
+
     def z_maker(self, x=None, y=None, channel=None):
         """"
         using the mask option might avoid misrepresenting data, but it causes some warnings when using
@@ -200,6 +211,8 @@ class GUI_processor:
         :param plot_choice: What method should be used to plot
         :return: Plots the graph
         """
+        # if cb != None:
+        #     cb.remove()
         if plot_choice not in PLOT_OPTIONS:
             raise ValueError("plot_choice must be one of {}.".format(PLOT_OPTIONS))
         if channel not in VALID_CHANNELS:
@@ -221,7 +234,13 @@ class GUI_processor:
             end = self.end_moment
         if start % length >= end % length:
             raise ValueError("End must be greater than start.")
-        plt.gcf()
+        #plt.gcf()
+        self.fig
+        self.ax.cla()
+        plt.sca(self.ax)
+
+        #ax = plt.axes()
+
         z =  self.z_maker(start, end, channel)
         time = dates.epoch2num(self.lidar_data['Time'][start:end].data)
         altitude = self.lidar_data['Altitude (m)'][start:end].data
@@ -248,16 +267,44 @@ class GUI_processor:
             contour_p = plt.pcolormesh(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
         line_p = plt.plot(time, altitude, color='black', linewidth=2)
         myFmt = dates.DateFormatter('%H:%M')
-        ax.xaxis.set_major_formatter(myFmt)
-        plt.colorbar(contour_p)
+        self.ax.xaxis.set_major_formatter(myFmt)
+        self.cb = plt.colorbar(contour_p)
 
 
 class Index(object):
     def next(self, event):
-        print(ax.xaxis)
+        #print(ax.xaxis)
         print('start')
+        processor.cb.remove()
         # print(contour_p.get_array())
-        plt.clf()
+        #plt.clf()
+        # fig = processor.fig
+        # im = fig.images
+        # cb = im[0].colorbar
+        # cb.remove()
+        print(processor.start_moment)
+        print(processor.end_moment)
+        processor.start_moment += 100
+        processor.end_moment += 100
+        print(processor.start_moment)
+        print(processor.end_moment)
+        plt.gcf()
+
+        #fig, ax = plt.subplots()
+        plt.subplots_adjust(bottom=0.2)
+        processor.plotter()
+
+        # processor.plotter(start_string, end, channel=channel, plot_choice=plot_choice)
+        # callback = Index()
+        # axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
+        # axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
+        # bnext = Button(axnext, 'Next')
+        # bnext.on_clicked(callback.next)
+        # bprev = Button(axprev, 'Previous')
+        # bprev.on_clicked(callback.prev)
+
+        print("Near the end")
+        plt.draw()
         # plt.cla() just clears the button
         # https://stackoverflow.com/questions/17085711/plot-to-specific-axes-in-matplotlib
         # https://stackoverflow.com/questions/14254379/how-can-i-attach-a-pyplot-function-to-a-figure-instance/14261698#14261698
@@ -331,20 +378,21 @@ if __name__ == '__main__':
     # if end < start_string:
     #     raise ValueError("Start must come before end.")
 
-    fig, ax = plt.subplots()
-    plt.subplots_adjust(bottom=0.2)
+    # fig, ax = plt.subplots()
+    # plt.subplots_adjust(bottom=0.2)
 
     processor = GUI_processor(start_string=start_string, end_string=end_string)
+    processor.generatePlot()
     processor.plotter()
 
     # processor.plotter(start_string, end, channel=channel, plot_choice=plot_choice)
-    callback = Index()
-    axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
-    axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
-    bnext = Button(axnext, 'Next')
-    bnext.on_clicked(callback.next)
-    bprev = Button(axprev, 'Previous')
-    bprev.on_clicked(callback.prev)
+    # callback = Index()
+    # axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
+    # axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
+    # bnext = Button(axnext, 'Next')
+    # bnext.on_clicked(callback.next)
+    # bprev = Button(axprev, 'Previous')
+    # bprev.on_clicked(callback.prev)
 
     print("Near the end")
     plt.show()
