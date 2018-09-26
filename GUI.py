@@ -16,6 +16,8 @@ import argparse
 import re
 import warnings
 import win32api
+import tkinter as tk
+from tkinter import messagebox
 
 PLOT_OPTIONS =  {'LINEAR', 'CONTOURF', 'PCOLOR', 'PCOLORMESH'}
 VALID_CHANNELS = {0, 1, 2}
@@ -42,18 +44,18 @@ class GUI_processor:
             self.date_dt = datetime.strptime(date_string, "%d/%m/%Y").date()
 
         if start_string == None:
-            self.start_epoch = self.lidar_data['Time'][0]
+            self.start_timestamp = self.lidar_data['Time'][0]
             self.start_moment = 1000
         else:
-            self.start_epoch = self.epoch_maker(start_string)
-            self.start_moment = self.moment_maker(self.start_epoch)
+            self.start_timestamp = self.timestamp_maker(start_string)
+            self.start_moment = self.moment_maker(self.start_timestamp)
 
         if end_string == None:
-            self.end_epoch = self.lidar_data['Time'][-1]
+            self.end_timestamp = self.lidar_data['Time'][-1]
             self.end_moment = 1200
         else:
-            self.end_epoch = self.epoch_maker(end_string)
-            self.end_moment = self.moment_maker(self.end_epoch)
+            self.end_timestamp = self.timestamp_maker(end_string)
+            self.end_moment = self.moment_maker(self.end_timestamp)
 
         if self.start_moment % self.length >= self.end_moment % self.length:
             raise ValueError("End must be greater than start.")
@@ -82,7 +84,7 @@ class GUI_processor:
         self.bprev = Button(self.axprev, 'Previous')
         self.bprev.on_clicked(self.callback.prev)
 
-    def epoch_maker(self, time_string):
+    def timestamp_maker(self, time_string):
         """
 
         :param time_string: A string representing a time in the format HH:MM:SS
@@ -100,25 +102,25 @@ class GUI_processor:
         timestamp = datetime.timestamp(datetime_dt.replace(tzinfo=timezone.utc))
         return timestamp
 
-    def moment_maker(self, epoch_time):
+    def moment_maker(self, timestamp):
         """
 
-        :param epoch_time: A unix time in the UTC timezone which will be transformed into a moment
+        :param timestamp: A unix time in the UTC timezone which will be transformed into a moment
         within the LIDAR experiment.
         :return: A moment in the experiment corresponding to the unix time.
         """
         time_array = self.lidar_data['Time'][:].data
-        if epoch_time < time_array.min():
-            # print(str(epoch_time) + " < " + str(time_array.min()))
+        if timestamp < time_array.min():
+            # print(str(timestamp) + " < " + str(time_array.min()))
             warnings.warn("A given date and time is earlier "
                           "than the experiment period", Warning)
             return 0
-        elif epoch_time > time_array.max():
+        elif timestamp > time_array.max():
             warnings.warn("A given date and time is later "
                           "than the experiment period", Warning)
             return -1
         else:
-            index_array = np.argwhere(time_array <= epoch_time)
+            index_array = np.argwhere(time_array <= timestamp)
             index = index_array.max()
             return index
 
@@ -135,8 +137,8 @@ class GUI_processor:
         if not time_pattern.fullmatch(end_string):
             raise ValueError("'{}' is not in the right format. Please ensure end_string is a".format(end_string) +
             " string in the format HH:MM:SS.")
-        start_e = self.epoch_maker(start_string)
-        end_e = self.epoch_maker(end_string)
+        start_e = self.timestamp_maker(start_string)
+        end_e = self.timestamp_maker(end_string)
         start = self.moment_maker(start_e)
         end = self.moment_maker(end_e)
         return (start, end)
@@ -254,35 +256,42 @@ class Index(object):
         self.processor = processor
 
     def next(self, event):
-        if (processor.end_moment % processor.length) >= (processor.length-1):
-            win32api.MessageBox(0, 'You have reached the end of the data.', 'End of Data')
+        if (self.processor.end_moment % self.processor.length) >= (self.processor.length-1):
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showwarning('End of Data', "You have reached the end of the data.")
+            #win32api.MessageBox(0, 'You have reache
+            # d the end of the data.', 'End of Data')
         else:
-            if processor.length-1 > processor.end_moment % processor.length > processor.length-101:
-                processor.start_moment = (processor.start_moment % processor.length) + \
-                                         ((processor.length - 1) - (processor.end_moment % processor.length))
-                processor.end_moment = processor.length - 1
+            #self.processor = processor
+            if self.processor.length-1 > self.processor.end_moment % self.processor.length > self.processor.length-101:
+                self.processor.start_moment = (self.processor.start_moment % self.processor.length) + \
+                                      ((self.processor.length - 1) - (self.processor.end_moment % self.processor.length))
+                self.processor.end_moment = self.processor.length - 1
             else:
-                processor.start_moment = processor.start_moment % processor.length + 100
-                processor.end_moment = processor.end_moment % processor.length + 100
-            processor.cb.remove()
-            # choice = processor.plot_choice
-            # print(choice)
-            processor.plotter(plot_choice=processor.plot_choice, channel=processor.channel)
+                self.processor.start_moment = self.processor.start_moment % self.processor.length + 100
+                self.processor.end_moment = self.processor.end_moment % self.processor.length + 100
+            self.processor.cb.remove()
+            self.processor.plotter(plot_choice=self.processor.plot_choice, channel=self.processor.channel)
             plt.draw()
 
     def prev(self, event):
-        if (processor.start_moment % processor.length) <= (0):
-            win32api.MessageBox(0, 'You have reached the end of the data.', 'End of Data')
+        #self.processor = processor
+        if (self.processor.start_moment % self.processor.length) <= (0):
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showwarning('End of Data', "You have reached the end of the data.")
+            #win32api.MessageBox(0, 'You have reached the end of the data.', 'End of Data')
         else:
-            if 0 < processor.start_moment % processor.length < 100:
-                processor.end_moment = (processor.end_moment % processor.length) - \
-                                       (processor.start_moment % processor.length)
-                processor.start_moment = 0
+            if 0 < self.processor.start_moment % self.processor.length < 100:
+                self.processor.end_moment = (self.processor.end_moment % self.processor.length) - \
+                                    (self.processor.start_moment % self.processor.length)
+                self.processor.start_moment = 0
             else:
-                processor.start_moment = processor.start_moment % processor.length - 100
-                processor.end_moment = processor.end_moment % processor.length - 100
-            processor.cb.remove()
-            processor.plotter(plot_choice=processor.plot_choice, channel=processor.channel)
+                self.processor.start_moment = self.processor.start_moment % self.processor.length - 100
+                self.processor.end_moment = self.processor.end_moment % self.processor.length - 100
+            self.processor.cb.remove()
+            self.processor.plotter(plot_choice=self.processor.plot_choice, channel=self.processor.channel)
             plt.draw()
 
 

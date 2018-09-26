@@ -2,6 +2,7 @@ import lidar
 import GUI
 import pytest
 import argparse
+import matplotlib.pyplot as plt
 import warnings
 import numpy
 from datetime import datetime, time, timezone
@@ -12,22 +13,16 @@ def processor_setup():
                              file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
 
 
-lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
-
-#https://docs.pytest.org/en/latest/assert.html
-#https://docs.pytest.org/en/latest/
-#http://pythontesting.net/framework/pytest/pytest-introduction/
-#https://docs.pytest.org/en/latest/
-#https://docs.python-guide.org/writing/tests/
+#lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
 
 def test_processor_default():
     processor = GUI.GUI_processor()
     assert processor.length == 7150
     assert processor.date_dt == datetime.utcfromtimestamp(1438947075.0).date()
     assert processor.start_moment == 1000
-    assert processor.start_epoch == 1438947075.0
+    assert processor.start_timestamp == 1438947075.0
     assert processor.end_moment == 1200
-    assert processor.end_epoch == 1438971878.0
+    assert processor.end_timestamp == 1438971878.0
     assert processor.plot_choice == 'PCOLORMESH'
     assert processor.channel == 0
 
@@ -43,60 +38,129 @@ def test_processor_channel_error():
     with pytest.raises(ValueError, match="FOOBAR is not a valid channel. channel must be one of {0, 1, 2}."):
         GUI.GUI_processor(channel = "FOOBAR")
 
+def test_timestamp_maker_valid(processor_setup):
+    assert processor_setup.timestamp_maker("15:30:00") == 1438961400.0
+
+def test_timestamp_maker_invalid(processor_setup):
+    with pytest.raises(ValueError, match="'25:30:00' is not in the right format. Please ensure time_string is a string"
+                                         " in the format HH:MM:SS."):
+        processor_setup.timestamp_maker("25:30:00")
+    with pytest.raises(ValueError, match="'23-30-00' is not in the right format. Please ensure time_string is a string"
+                                         " in the format HH:MM:SS."):
+        processor_setup.timestamp_maker("23-30-00")
+    with pytest.raises(ValueError, match="'FOOBAR' is not in the right format. Please ensure time_string is a string in"
+                                         " the format HH:MM:SS."):
+        processor_setup.timestamp_maker("FOOBAR")
+    with pytest.raises(TypeError, match="0 is not a string. Please ensure time_string is a string in the format"
+                                        " HH:MM:SS."):
+        processor_setup.timestamp_maker(0)
+
 def test_valid_moment(processor_setup):
     assert processor_setup.moment_maker(1438956604) == 601
 
-def test_low_moment_value(processor_setup):
-    assert processor_setup.moment_maker(1438947074) == 0
-
-def test_low_moment_warning(processor_setup):
+def test_low_moment(processor_setup):
     with pytest.warns(Warning, match='A given date and time is earlier than the experiment period'):
-        processor_setup.moment_maker(1438947074)
+        assert processor_setup.moment_maker(1438947074) == 0
 
-def test_high_moment_value(processor_setup):
-    assert processor_setup.moment_maker(1438971879) == -1
-
-def test_high_moment_warning(processor_setup):
+def test_high_moment(processor_setup):
     with pytest.warns(Warning, match='A given date and time is later than the experiment period'):
-        processor_setup.moment_maker(1438971879)
-
-def test_epoch_maker(processor_setup):
-    assert processor_setup.epoch_maker("15:00:00") == 1438959600
-
-def test_epoch_type_error(processor_setup):
-    with pytest.raises(TypeError, match = " is not a string. Please ensure time_string is a string"
-                                          " in the format HH:MM:SS."):
-        processor_setup.epoch_maker(0)
-
-def test_epoch_value_error(processor_setup):
-    with pytest.raises(ValueError, match = " is not in the right format. Please ensure time_string is a string"
-                                          " in the format HH:MM:SS."):
-        processor_setup.epoch_maker("FOOBAR")
+        assert processor_setup.moment_maker(1438971879) == -1
 
 def test_start_end_maker(processor_setup):
     assert processor_setup.start_end_maker("15:00:00", "15:30:00") == (2025, 2689)
 
 def test_start_type_error(processor_setup):
-    with pytest.raises(TypeError, match = " is not a string. Please ensure start_string is a string"
+    with pytest.raises(TypeError, match = "0 is not a string. Please ensure start_string is a string"
                                           " in the format HH:MM:SS."):
         processor_setup.start_end_maker(0, "15:30:00")
 
 def test_start_value_error(processor_setup):
-    with pytest.raises(ValueError, match = " is not in the right format. Please ensure start_string is a string"
+    with pytest.raises(ValueError, match = "'FOOBAR' is not in the right format. Please ensure start_string is a string"
                                           " in the format HH:MM:SS."):
         processor_setup.start_end_maker("FOOBAR", "15:30:00")
 
 def test_end_type_error(processor_setup):
-    with pytest.raises(TypeError, match = " is not a string. Please ensure end_string is a string"
+    with pytest.raises(TypeError, match = "0 is not a string. Please ensure end_string is a string"
                                           " in the format HH:MM:SS."):
         processor_setup.start_end_maker("15:00:00", 0)
 
 def test_end_value_error(processor_setup):
-    with pytest.raises(ValueError, match = " is not in the right format. Please ensure end_string is a string"
+    with pytest.raises(ValueError, match = "'FOOBAR' is not in the right format. Please ensure end_string is a string"
                                           " in the format HH:MM:SS."):
         processor_setup.start_end_maker("15:00:00", "FOOBAR")
 
-def test_time_type_valied():
+def test_z_maker(processor_setup):
+    z = processor_setup.z_maker()
+    assert isinstance(z, numpy.ma.core.MaskedArray)
+    assert z.all() >= 0
+
+def test_height_maker(processor_setup):
+    x = processor_setup.start_moment
+    y = processor_setup.end_moment
+    z = processor_setup.z_maker(x, y)
+    height = processor_setup.height_maker(x, y, z)
+    assert isinstance(height, numpy.ma.core.MaskedArray)
+    assert height.all() >= 0
+
+def test_time_maker(processor_setup):
+    x = processor_setup.start_moment
+    y = processor_setup.end_moment
+    z = processor_setup.z_maker(x, y)
+    time = processor_setup.time_maker(x, y, z)
+    assert isinstance(time, numpy.ndarray)
+    assert time.all() >= 0
+
+def test_next():
+    """
+    This test checks that the next method in the Index class, change the start_moment and end_moment of a
+    GUI_processor in the appropriate manner. The last 3 lines have been commented out because they result in a
+    message box being created. This is the desired behaviour, however it disrupts the rest of the unit tests until
+    it is closed.
+    """
+    """
+    :return: 
+    """
+    processor = GUI.GUI_processor(start_string="18:11:28", end_string="18:18:29",
+                             file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
+    processor.plotter()
+    assert processor.start_moment == 6775
+    assert processor.end_moment == 6975
+    processor.callback.next(pytest.mark.event)
+    assert processor.start_moment == 6875
+    assert processor.end_moment == 7075
+    processor.callback.next(pytest.mark.event)
+    assert processor.start_moment == 6949
+    assert processor.end_moment == 7149
+    # processor.callback.next(pytest.mark.event)
+    # assert processor.start_moment == 6949
+    # assert processor.end_moment == 7149
+
+def test_prev():
+    """
+    This test checks that the prev method in the Index class, change the start_moment and end_moment of a
+    GUI_processor in the appropriate manner. The last 3 lines have been commented out because they result in a
+    message box being created. This is the desired behaviour, however it disrupts the rest of the unit tests until
+    it is closed.
+    """
+    """
+    :return: 
+    """
+    processor = GUI.GUI_processor(start_string="11:37:19", end_string="13:5:54",
+                             file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
+    processor.plotter()
+    assert processor.start_moment == 175
+    assert processor.end_moment == 375
+    processor.callback.prev(pytest.mark.event)
+    assert processor.start_moment == 75
+    assert processor.end_moment == 275
+    processor.callback.prev(pytest.mark.event)
+    assert processor.start_moment == 0
+    assert processor.end_moment == 200
+    # processor.callback.prev(pytest.mark.event)
+    # assert processor.start_moment == 0
+    # assert processor.end_moment == 200
+
+def test_time_type_valid():
     times = []
     for i in range(0, 24):
         for j in range(0, 60):
@@ -238,8 +302,3 @@ def test_date_type_invalid():
     with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
         GUI.date_type(invalid_dates[35])
 
-def test_z_type(processor_setup):
-    assert isinstance(processor_setup.z_maker(), numpy.ma.core.MaskedArray)
-
-def test_z_non_negative(processor_setup):
-    assert processor_setup.z_maker().all() >= 0

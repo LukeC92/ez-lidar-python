@@ -52,3 +52,14 @@ test init warnings and errors
 why does the order of the plot_choice error change while the channel error stays the same.
 
 
+organise the tests a bit more
+
+maybe generate plot could be placed somewhere else
+let the plotting be handled separately so the data processiing can be done first
+
+
+make a setup for z so time and height are quicker?
+
+capture message box
+
+
