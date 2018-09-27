@@ -31,19 +31,52 @@ from tkinter import messagebox
 
 PLOT_OPTIONS = {'LINEAR', 'CONTOURF', 'PCOLOR', 'PCOLORMESH'}
 VALID_CHANNELS = {0, 1, 2}
+# This regular expression can be used to ensure a string represents a proper time in the 24 hour clock with the
+# time being written in the format HH:MM:SS
 time_pattern = re.compile(r"([0-1]?\d|2[0-3]):([0-5]?\d):(\d?\d)")
+# This 'height correction' is based off of information provided by Dave Tiddeman at the Met Office. Each pulse
+# in a LIDAR profile is fired "10 nanoseconds later or 1.5 meters further from the aircraft". As such to find the
+# height for a LIDAR point I must incrementally cubtract 1.5m from the altitude of the plane.
 height_correction = 1.5 * np.arange(12148)
 
 
 class GuiProcessor:
     """
-    A class containing key features for the plotting and manipulation of lidar data.
+    This class contains numerous method for handling LIDAR data and getting it ready to be plotted.
+    It's main purpose is to produce a plot using the plotter() method, however some of the methods are useful for
+    manipulating anf viewing the LIDAR data in and of itself.
+
+
 
     """
     def __init__(self, file_path=None, start_string=None, end_string=None,
                  date_string=None, channel=0, plot_choice='PCOLORMESH'):
         """
-        The default folder should be 'metoffice-lidar_faam_20150807_r0_B920_raw.nc'
+        This method creates the processor while checking that the values being used make sense.
+
+        :param file_path: The file path to the sample data, if none is provided it will be changed to
+                            'metoffice-lidar_faam_20150807_r0_B920_raw.nc'
+        :param start_string: A string representing the start time in the format HH:MM:SS.
+        :param end_string: A string representing the end time in the format HH:MM:SS.
+        :param date_string: A string representing the date of the data in the format DD/MM/YYYY. With the files
+                            available this choice does not change much. Both sample files represent data from a
+                            single day, the date of which is automatically chosen if the string is left blank. Hence,
+                            choosing a different date would simply cause an error. This option was included, to account
+                            for the possibility that other files might require a date choice.
+
+        :param channel: The channel from the LIDAR tool from which data should be taken. The channels can be 0, 1 or 2.
+                        Only the LIDAR data itself is affect, height, time and altitude will not change.
+
+        :param plot_choice: Represents the tool that should be used to plot the LIDAR data. This was included to show
+                            each methods capabilities. The options are:
+                            PCOLORMESH - Which represents plotting using the pcolormesh method and a logarithmic scale.
+                            LINEAR - Which represents plotting using the pcolormesh method and a linear scale.
+                            CONTOURF - Which represents plotting using the contourf method and a logarithmic scale.
+                                       When this option is used the Next and Previous buttons do not function properly.
+                            PCOLOR - Which represents plotting using the pcolor method and a logarithmic scale. This
+                                     method takes a long time to plot; it takes around 50 seconds to plot a 7 minute
+                                     interval (which is the default size). It is not recommended for larger intervals
+                                     or using with the Next and Previous button.
         """
         if file_path is None:
             file_path = 'metoffice-lidar_faam_20150807_r0_B920_raw.nc'
@@ -59,19 +92,17 @@ class GuiProcessor:
             time_0 = self.lidar_data['Time'][0]
             self.date_dt = datetime.utcfromtimestamp(time_0.item()).date()
         else:
-            print("string not none")
             self.date_dt = datetime.strptime(date_string, "%d/%m/%Y").date()
-            print(self.date_dt)
 
         if start_string is None:
-            self.start_timestamp = self.lidar_data['Time'][0]
+            self.start_timestamp = self.lidar_data['Time'][1000]
             self.start_moment = 1000
         else:
             self.start_timestamp = self.timestamp_maker(start_string)
             self.start_moment = self.moment_maker(self.start_timestamp)
 
         if end_string is None:
-            self.end_timestamp = self.lidar_data['Time'][-1]
+            self.end_timestamp = self.lidar_data['Time'][1200]
             self.end_moment = 1200
         else:
             self.end_timestamp = self.timestamp_maker(end_string)
@@ -91,32 +122,28 @@ class GuiProcessor:
         else:
             raise ValueError("{} is not a valid channel. channel must be one of {}.".format(channel, VALID_CHANNELS))
 
-    # noinspection PyAttributeOutsideInit
     def generate_plot(self):
         """
-        Sets up the plotting space.
+        This sets up a figure and subplot which data which will be plotted onto either. It also creates the Next
+        and Previous button. Most of this code was adapted from https://matplotlib.org/examples/widgets/buttons.html
         """
-        # noinspection PyAttributeOutsideInit,PyAttributeOutsideInit
         self.fig, self.ax = plt.subplots()
         plt.subplots_adjust(bottom=0.2)
-        # noinspection PyAttributeOutsideInit
         self.callback = Index(self)
-        # noinspection PyAttributeOutsideInit
         self.axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
-        # noinspection PyAttributeOutsideInit
         self.axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
-        # noinspection PyAttributeOutsideInit
         self.bnext = Button(self.axnext, 'Next')
         self.bnext.on_clicked(self.callback.next)
-        # noinspection PyAttributeOutsideInit
         self.bprev = Button(self.axprev, 'Previous')
         self.bprev.on_clicked(self.callback.prev)
 
     def timestamp_maker(self, time_string):
         """
+        This method takes a string in the format HH:MM:SS and returns a standard Unix timestamp corresponding
+        to that time on the date listed at self.date_dt. The timezone is assumed to be UTC.
 
         :param time_string: A string representing a time in the format HH:MM:SS
-        :return: The Unix time corresponding to the given string on the date lised at self.date_dt.
+        :return: The Unix timestamp corresponding to the given string on the date listed at self.date_dt.
         """
         if not isinstance(time_string, str):
             raise TypeError("{} is not a string. Please ensure time_string is a string".format(time_string) +
@@ -132,14 +159,16 @@ class GuiProcessor:
 
     def moment_maker(self, timestamp):
         """
+        This method takes a standard Unix timestamp and returns the index of that time within the LIDAR data. If the
+        timestamp is set before the experiment began it is set to the first moment in the experiment. If the timestamp
+        is set after the experiment is finished, then it is set to the last moment. The timezone is assumed to be UTC.
 
-        :param timestamp: A unix time in the UTC timezone which will be transformed into a moment
+        :param timestamp: A unix timestamp in the UTC timezone which will be transformed into a moment
         within the LIDAR experiment.
-        :return: A moment in the experiment corresponding to the unix time.
+        :return: A moment in the experiment corresponding to the unix timestamp.
         """
         time_array = self.lidar_data['Time'][:].data
         if timestamp < time_array.min():
-            # print(str(timestamp) + " < " + str(time_array.min()))
             warnings.warn("A given date and time is earlier "
                           "than the experiment period", Warning)
             return 0
@@ -152,70 +181,61 @@ class GuiProcessor:
             index = index_array.max()
             return index
 
-    def start_end_maker(self, start_string, end_string):
-        if not isinstance(start_string, str):
-            raise TypeError("{} is not a string. Please ensure start_string is a string".format(start_string) +
-                            " in the format HH:MM:SS.")
-        if not time_pattern.fullmatch(start_string):
-            raise ValueError("'{}' is not in the right format. Please ensure start_string is a".format(start_string) +
-                             " string in the format HH:MM:SS.")
-        if not isinstance(end_string, str):
-            raise TypeError("{} is not a string. Please ensure end_string is a string".format(end_string) +
-                            " in the format HH:MM:SS.")
-        if not time_pattern.fullmatch(end_string):
-            raise ValueError("'{}' is not in the right format. Please ensure end_string is a".format(end_string) +
-                             " string in the format HH:MM:SS.")
-        start_timestamp = self.timestamp_maker(start_string)
-        print(start_timestamp)
-        end_timestamp = self.timestamp_maker(end_string)
-        print(end_timestamp)
-        start = self.moment_maker(start_timestamp)
-        end = self.moment_maker(end_timestamp)
-        return start, end
-
-    def z_maker(self, x=None, y=None, channel=None):
-        """"
-        using the mask option might avoid misrepresenting data, but it causes some warnings when using
-        pcorlormeshthe warnings don't seem to happen with pcorlor, not sure about contourf
+    def z_maker(self, start_moment=None, end_moment=None, channel=None):
         """
-        if x is None:
-            x = self.start_moment
-        if y is None:
-            y = self.end_moment
+        This method produces and array of LIDAR data between the start moment and the end moment. Note that nan values
+        will be masked. Some plotting options struggle with masked values and might throw warnings.
+
+        :param start_moment: The start index for filtering te LIDAR data.
+        :param end_moment: The start index for filtering te LIDAR data.
+        :param channel: The LIDAR chanel from which data will be taken.
+        :return: An array of LIDAR data with nan values masked and any value below 0 set to 0.
+        """
+        if start_moment is None:
+            start_moment = self.start_moment
+        if end_moment is None:
+            end_moment = self.end_moment
         if channel is None:
             channel = self.channel
-        data = self.lidar_data.profile[channel][x:y].data.clip(0)
+        if channel not in VALID_CHANNELS:
+            raise ValueError("{} is not a valid channel. channel must be one of {}.".format(channel, VALID_CHANNELS))
+        data = self.lidar_data.profile[channel][start_moment:end_moment].data.clip(0)
         data_m = ma.masked_invalid(data)
         return data_m
 
-    def height_maker(self, x, y, z):
+    def height_maker(self, start_moment, end_moment, z):
         """
-        When the altitude is not defined it is set to 0. This is to prevent some world stopping errors.
-        It can make some of the data look odd. But for the most part it will have the desired effect of hiding data
-        without a defined height. The alternative is to mask the height and this works fine for contourf. However
-        simply masking the array results in pcolor or pcolormesh crashing pcolormesh seems to be the fasted way to plot
-        hence my decision.
-        :param x: The start moment of the sample.
-        :param y: The end moment of the sample.
+        This method creates a returns an array of heights of the same shape as a given LIDAR data array. The reasoning
+        behind subtracting height_correction from altitude is established at the top of this file. When the Altitude
+        is not defined the height is set to 0. This is because several of the plotting methods, including the default
+        PCOLORMESH cannot handle masked or nan values in an axis like height. This compromise can result in some
+        sections slightly misrepresenting the data. However, none of the methods I'vr found can handle a masked height,
+        certainly not within a reasonable time. For the most part setting the height has a reasonable effect of hiding
+        the data in this undefined region.
+
+        :param start_moment: The start moment of the sample.
+        :param end_moment: The end moment of the sample.
         :param z: The lidar data who's shape the result will be based on.
         :return: A numpy array of heights of the same shape as a a provided array of LIDAR data.
         """
-        altitude = self.lidar_data['Altitude (m)'][x:y].data
+        altitude = self.lidar_data['Altitude (m)'][start_moment:end_moment].data
         height_array = np.empty_like(z)
         for j in range(0, len(z[0])):
             height_array[:, j] = altitude[j] - height_correction
         height_array = np.nan_to_num(height_array.clip(0))
         return height_array
 
-    def time_maker(self, x, y, z):
+    def time_maker(self, start_moment, end_moment, z):
         """
-        This method is only really used with contouf. It can be used with pcolormesh but does not have to be.
-        :param x: The start moment of the sample.
-        :param y: The end moment of the sample.
+        This method produces an array of Unix timestamps of the same shape as some provided LIDAR data. Some of the
+        plotting methods can use time in this shape, however only contour and contourf seem to require it.
+
+        :param start_moment: The start moment of the sample.
+        :param end_moment: The end moment of the sample.
         :param z: The lidar data who's shape the result will be based on.
         :return: A numpy array of times of the same shape as a a provided array of LIDAR data.
         """
-        time = self.lidar_data['Time'][x:y].data
+        time = self.lidar_data['Time'][start_moment:end_moment].data
         time_array = np.empty_like(z)
         for j in range(0, len(z)):
             for i in range(0, len(z[j])):
@@ -223,15 +243,28 @@ class GuiProcessor:
         mpl_time = dates.epoch2num(time_array)
         return mpl_time
 
-    # contour and contourf are slow and contour leaves white space
-    # pcolor is slow
     def plotter(self, start_moment=None, end_moment=None, channel=0, plot_choice="PCOLORMESH"):
         """
-        Pcolor is slow.
-        :param start_moment: Start moment
-        :param end_moment: End moment
-        :param channel: THe LIDAR channel
-        :param plot_choice: What method should be used to plot
+        This method takes information provided to it or taken from the GuiProcessor class and turns it into a
+        plotted figure. The default tool used for plotting is PCOLORMESH. PCOLORMESH seems to be the quickest and
+        produces a reasonable looking plot using a logarithmic scale. Other options are available, however
+        they can have serious drawbacks, as explained under the plot)choice parameter.
+
+        :param start_moment: The index within the LIDAR data the method starts plotting from.
+        :param end_moment: The end index of the plot.
+        :param channel: The channel from the LIDAR tool from which data should be taken. The channels can be 0, 1 or 2.
+                        Only the LIDAR data itself is affect, height, time and altitude will not change.
+
+        :param plot_choice: Represents the tool that should be used to plot the LIDAR data. This was included to show
+                            each methods capabilities. The options are:
+                            PCOLORMESH - Which represents plotting using the pcolormesh method and a logarithmic scale.
+                            LINEAR - Which represents plotting using the pcolormesh method and a linear scale.
+                            CONTOURF - Which represents plotting using the contourf method and a logarithmic scale.
+                                       When this option is used the Next and Previous buttons do not function properly.
+                            PCOLOR - Which represents plotting using the pcolor method and a logarithmic scale. This
+                                     method takes a long time to plot; it takes around 50 seconds to plot a 7 minute
+                                     interval (which is the default size). It is not recommended for larger intervals
+                                     or using with the Next and Previous button.
         :return: Plots the graph
         """
         if plot_choice not in PLOT_OPTIONS:
@@ -262,39 +295,42 @@ class GuiProcessor:
         plt.xlabel('Time')
 
         if plot_choice == "PCOLOR":
-            print("It is pcolor")
             contour_p = plt.pcolor(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
         elif plot_choice == "LINEAR":
-            print("It is linear")
             contour_p = plt.pcolormesh(time, height, z, vmax=0.0007)
         elif plot_choice == "CONTOURF":
-            print("It is contourf")
             time_tall = self.time_maker(start_moment, end_moment, z)
             contour_p = plt.contourf(time_tall, height, z, locator=ticker.LogLocator())
         else:
-            print("It is log")
             contour_p = plt.pcolormesh(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
 
         line_p = plt.plot(time, altitude, color='black', linewidth=2)
         my_fmt = dates.DateFormatter('%H:%M')
         self.ax.xaxis.set_major_formatter(my_fmt)
-        # noinspection PyAttributeOutsideInit
         self.cb = plt.colorbar(contour_p)
 
 
 class Index(object):
+    """
+    This class provides the functionality for the Next and Previous button in the GUI. The structure of this
+    class was taken from https://matplotlib.org/examples/widgets/buttons.html
+    """
     def __init__(self, processor):
         self.processor = processor
 
     def next(self, event):
+        """
+        This method is assigned to the Next button. When pressed it moves the data along 100 "moments". This usually
+        corresponds to around 3.5 minutes. If the data is within 100 moments of the end, then it simply goes up to
+        the very end and stops. Any attempts to move further will results in a warning message being displayed.
+        :param event: Clicking Next
+        """
         if (self.processor.end_moment % self.processor.length) >= (self.processor.length - 1):
             root = tk.Tk()
             root.withdraw()
             messagebox.showwarning('End of Data', "You have reached the end of the data.")
-            # win32api.MessageBox(0, 'You have reache
-            # d the end of the data.', 'End of Data')
+
         else:
-            # self.processor = processor
             if self.processor.length - 1 > self.processor.end_moment % self.processor.length > self.processor.length - 101:
                 self.processor.start_moment = (self.processor.start_moment % self.processor.length) + \
                                               ((self.processor.length - 1) - (
@@ -308,12 +344,17 @@ class Index(object):
             plt.draw()
 
     def prev(self, event):
-        # self.processor = processor
+        """
+        This method is assigned to the Previous button. When pressed it moves the data back 100 "moments". This usually
+        corresponds to around 3.5 minutes. If the data is within 100 moments of the beginning, then it simply goes back
+        to the very beginning and stops. Any attempts to move further back will results in a warning message being
+        displayed.
+        :param event: Clicking Previous
+        """
         if (self.processor.start_moment % self.processor.length) <= 0:
             root = tk.Tk()
             root.withdraw()
             messagebox.showwarning('End of Data', "You have reached the end of the data.")
-            # win32api.MessageBox(0, 'You have reached the end of the data.', 'End of Data')
         else:
             if 0 < self.processor.start_moment % self.processor.length < 100:
                 self.processor.end_moment = (self.processor.end_moment % self.processor.length) - \
@@ -329,7 +370,7 @@ class Index(object):
 
 def time_type(s):
     """
-    This is a data type to ensure users enter the time correctly.
+    This is a data type to ensure users enter the time in the format HH:MM:SS.
     """
     if not time_pattern.fullmatch(s):
         raise argparse.ArgumentTypeError("Please enter a valid time in the format HH:MM:SS.")
@@ -338,7 +379,12 @@ def time_type(s):
 
 def date_type(s):
     """
-    This is a data type to ensure users enter the date correctly. It cannot currently account for leap years.
+    This is a data type to ensure users enter the date in the format DD/MM/YYYY. This method currently allows 29
+    February as a valid date even in years that are not leap years.
+    The first line in the pattern represents that January, March, May, July, August, October and December can have a
+    day between 1 and 31.
+    The second line represents that April, June, September and November can have a day between 1 and 30.
+    The third line represents that February can have a day between 1 and 29.
     """
     pat = re.compile(r"^(((0?[1-9]|[1-2]\d|3[0-1])/(0?[1,3,5,7,8]|1[0,2]))"
                      r"|((0?[1-9]|[1-2]\d|30)/(0?[4,6,9]|11))"
@@ -370,12 +416,7 @@ if __name__ == '__main__':
     plot_choice = args.plot_choice
     channel = args.channel
 
-    #    def __init__(self, file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc', start_string=None, end_string=None,
-    # date_string=None, channel=0):
-
     processor = GuiProcessor(file_path=file_path, start_string=start_string, end_string=end_string,
                              date_string=date_string, channel=channel, plot_choice=plot_choice)
     processor.plotter(channel=channel, plot_choice=plot_choice)
-
-    print("Near the end")
     plt.show()

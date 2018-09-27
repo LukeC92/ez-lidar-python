@@ -1,9 +1,12 @@
-# import lidar
+# This file was developed by Luke Carroll for the CO880 module at the University of Kent. It is an extension of code
+# developed between the Met Office and the National Centre for Atmospheric Science.
+#
+# These tests are designed to cover as much of the functionality within GUI.py as possible. More tests may be
+# beneficial as there may be needs I was unaware of or things I was unable to test with my available resources.
+
 import GUI
 import pytest
 import argparse
-# import matplotlib.pyplot as plt
-# import warnings
 import numpy
 from datetime import datetime
 
@@ -12,17 +15,14 @@ def processor_setup():
     return GUI.GuiProcessor(start_string="15:00:00", end_string="15:30:00",
                             file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
 
-
-#lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
-
 def test_processor_default():
     processor = GUI.GuiProcessor()
     assert processor.length == 7150
     assert processor.date_dt == datetime.utcfromtimestamp(1438947075.0).date()
     assert processor.start_moment == 1000
-    assert processor.start_timestamp == 1438947075.0
+    assert processor.start_timestamp == 1438957441.0
     assert processor.end_moment == 1200
-    assert processor.end_timestamp == 1438971878.0
+    assert processor.end_timestamp == 1438957860.0
     assert processor.plot_choice == 'PCOLORMESH'
     assert processor.channel == 0
 
@@ -70,33 +70,14 @@ def test_high_moment(processor_setup):
     with pytest.warns(Warning, match='A given date and time is later than the experiment period'):
         assert processor_setup.moment_maker(1438971879) == -1
 
-def test_start_end_maker(processor_setup):
-    assert processor_setup.start_end_maker("15:00:00", "15:30:00") == (2025, 2689)
-
-def test_start_type_error(processor_setup):
-    with pytest.raises(TypeError, match = "0 is not a string. Please ensure start_string is a string"
-                                          " in the format HH:MM:SS."):
-        processor_setup.start_end_maker(0, "15:30:00")
-
-def test_start_value_error(processor_setup):
-    with pytest.raises(ValueError, match = "'FOOBAR' is not in the right format. Please ensure start_string is a string"
-                                          " in the format HH:MM:SS."):
-        processor_setup.start_end_maker("FOOBAR", "15:30:00")
-
-def test_end_type_error(processor_setup):
-    with pytest.raises(TypeError, match = "0 is not a string. Please ensure end_string is a string"
-                                          " in the format HH:MM:SS."):
-        processor_setup.start_end_maker("15:00:00", 0)
-
-def test_end_value_error(processor_setup):
-    with pytest.raises(ValueError, match = "'FOOBAR' is not in the right format. Please ensure end_string is a string"
-                                          " in the format HH:MM:SS."):
-        processor_setup.start_end_maker("15:00:00", "FOOBAR")
-
 def test_z_maker(processor_setup):
     z = processor_setup.z_maker()
     assert isinstance(z, numpy.ma.core.MaskedArray)
     assert z.all() >= 0
+    with pytest.raises(ValueError, match="5 is not a valid channel. channel must be one of {0, 1, 2}."):
+        processor_setup.z_maker(channel = 5)
+    with pytest.raises(ValueError, match="FOOBAR is not a valid channel. channel must be one of {0, 1, 2}."):
+        processor_setup.z_maker(channel ="FOOBAR")
 
 def test_height_maker(processor_setup):
     x = processor_setup.start_moment
@@ -116,13 +97,10 @@ def test_time_maker(processor_setup):
 
 def test_next():
     """
-    This test checks that the next method in the Index class, change the start_moment and end_moment of a
+    This test checks that the next method in the Index class changes the start_moment and end_moment of a
     GUI_processor in the appropriate manner. The last 3 lines have been commented out because they result in a
     message box being created. This is the desired behaviour, however it disrupts the rest of the unit tests until
     it is closed.
-    """
-    """
-    :return:
     """
     processor = GUI.GuiProcessor(start_string="18:11:28", end_string="18:18:29",
                                  file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
@@ -141,13 +119,10 @@ def test_next():
 
 def test_prev():
     """
-    This test checks that the prev method in the Index class, change the start_moment and end_moment of a
+    This test checks that the prev method in the Index class changes the start_moment and end_moment of a
     GUI_processor in the appropriate manner. The last 3 lines have been commented out because they result in a
     message box being created. This is the desired behaviour, however it disrupts the rest of the unit tests until
     it is closed.
-    """
-    """
-    :return:
     """
     processor = GUI.GuiProcessor(start_string="11:37:19", end_string="13:5:54",
                                  file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
@@ -174,16 +149,10 @@ def test_time_type_valid():
         for j in range(0, 10):
             for k in range(0, 10):
                 times.append("0{}:0{}:0{}".format(i, j, k))
-    #times = ["12:00:00", "19:0:0", "23:23:23"]
-    #results = GUI.time_type(times)
     results = [GUI.time_type(i) for i in times]
     assert times == results
 
 def test_time_type_invalid():
-    """
-    Note this
-    :return:
-    """
     with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid time in the format HH:MM:SS."):
         GUI.time_type("24:00:00")
     with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid time in the format HH:MM:SS."):
@@ -198,7 +167,7 @@ def test_time_type_invalid():
 def test_date_type_valid():
     """
     Note this test currently expects 29 February to be a valid date regardless of whether the year is a leap year
-    or not. This reflects a current weakness in the code.
+    or not. Ideally this behaviour will be changed in the future.
     :return:
     """
     dates = ["31/01/2018", "31/1/2018", "01/01/2018", "1/01/2018",

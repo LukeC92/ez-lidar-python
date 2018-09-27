@@ -8,78 +8,71 @@ of information which will be useful in the future.
 the final moment will be set to the final moment. If the start and end are both above or both below the experiment
 period, a clear error could be thrown.
 1b) Currently the GUI_processor's fields can be set by anyone. Hence the start and end moments might be set to invalid
-values without any checks being carried out. For example it might be possible to set the start being set after the end
-resulting in a confusing / vague error message. Perhaps restricting premissions would be worthwhile, to ensure fields
+values without any checks being carried out. For example, it might be possible to set the start being set after the end
+resulting in a confusing / vague error message. Perhaps restricting permissions would be worthwhile, to ensure fields
 aren't changed to something nonsensical. Though this might go against Python's attitude towards private classes.
-1c) Does the date need to be managed in a different way? If all of the LIDAR eperiments will take place within 1 day,
+1c) Does the date need to be managed in a different way? If all the LIDAR experiments will take place within 1 day,
 perhaps it's not worth letting the user specify the data. Perhaps the date should just be taken from the data.
-1d) As oart of the Next and Previous method the colorbar of the graph is deleted and replotted. For some reason this
+1d) As part of the Next and Previous method the colorbar of the graph is deleted and replotted. For some reason this
 does not properly work with the contourf plot_option. Instead the graph gets compressed into a smaller and smaller
 space. If contourf is a desired means of plotting, this is an issue that may need to be addressed.
 1e) The start_timestamp and end_timestamp fields are not currently used anywhere. I defined them as fields because
-I thought they might be useful at some point. Unless a usage arises it might make sense to change them to local
+I thought they might be useful at some point. Unless a usage arises, it might make sense to change them to local
 variables.
+1f) Range correction is not used. Changing 'profile' to 'range_corrected' in the z_maker method might be a good start
+in trying to include range correction. However other methods need to be changed to account for different shapes
+and sizes. height_maker is a notable method that would need to be changed.
+1g) height_maker currently sets the height to 0 in any case when the altitude is nan. This is to ensure the data
+can be plotted as most plotting functions cannot accept nan height or height using masked values. However setting
+these nan heights to 0 can slightly misrepresent some parts of the data. There may ba an alternative I have missed.
+1h) Sometimes a valid start_string and a different valid end_string will be passed to GuiProcessor but the resulting
+moments will be the same, which in causes an error. My current theory is that in an interval without any moments in
+between them. This error can be replicated with start_string = "13:37:19" and end_string = "13:50:14". moment_maker
+might need to be changed. Alternatively a new method might be required that processes the start and end at the same
+time.
 
 2. Command line
 2a) Perhaps when the user first opens the data file they could be shown the period the data covers. Then they will
 know what a valid start and end time would be.
 
 3. General
-3a) Currently when lidar data is assigned all of its fields from lidar.py are printed out. It might be worth
+3a) Currently when lidar data is assigned, all of its fields from lidar.py are printed out. It might be worth
 suppressing this behaviour.
 3b) I've defined methods date_type and time_type for the use of filtering command line arguments. Would it be worth
 converting them into general Python types? The regular expressions could be useful elsewhere when we want a string
 in the date or time format.
 3c) The date_type always allows 29 February as a valid date, even if the year isn't a leap year. It might be worth
 changing that restriction to be more intelligent. It can probably be done with mathematics and regular expressions,
-however mayber there is a more effecient way.
+however maybe there is a more efficient way.
 3d) Future developers may find they require a different structure for their purposes. Maybe one could separate
 the plotting and data processing even further.
 3e) I have set the default moments in GUI_processor to be 1000 and 1200. I've done this because it gives a good range
 of normal data, without any nan values. However it may be different defaults would be more suitable for the Met
 Office usage.
 3f) Some of the imports in the pre-existing code are not used, perhaps it would be worth removing them.
+3g) maybe start_timestamp and end_timestamp don't need to be class fields as they are basically used as local
+variables. I set them as class fields because I thought they might be useful at some point.
 
 4. Testing, Errors and Warnings
 4a) Some of the errors and warnings within the code might be better using the "try else" format rather than the
 "if else" format.
-4b) The checks on indices use modular arithmetic to account for negative indices. There might be a more effecient way
-to do this, maybe simply ensuring all indices are non-negative would be more effecient.
+4b) The checks on indices use modular arithmetic to account for negative indices. There might be a more efficient way
+to do this, maybe simply ensuring all indices are non-negative would be more effective.
 4c) All of the unit tests only use one of the sample files currently. Perhaps it would be worth writing tests
 using the other file too.
-4d) The tests of the Next and Previous buttons are largely fine. However it would be good to test what they do when
-they reach the end of the data. For example it would be good to test that a tkinter messagebox appears and assert
+4d) The tests of the Next and Previous buttons are largely fine. However, it would be good to test what they do when
+they reach the end of the data. For example, it would be good to test that a tkinter messagebox appears and assert
 what the messagebox should say.
-4e) Perhaps some of the larger "processin" methods like z_maker and height_maker could be tested more thoroughly.
+4e) Perhaps some of the larger "processing" methods like z_maker and height_maker could be tested more thoroughly.
 I don't have a reliable way to store what their results should be. Also due to their size, the tests could start
 to take a very long time.
 4f) It should be possible to test the plotter method. Matplotlib allows for image comparison tests. If this isn't
 possible then simply checking that a figure is shown after plotter is run, would still be useful information. Though
 if we were to test all its functionality that could take a long time.
-4g) There might be more effecient ways to organise the unit tests. For example some of the tests could share a
+4g) There might be more efficient ways to organise the unit tests. For example, some of the tests could share a
 different setup function.
 4h) If the users a start but not an end (or vice versa) it might be good to check these values early on. E.g. compare
 the user entered values to their default partners and see if it makes sense. Though it may be the existing checks are
 already sufficient.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-state somewhere that start_epoch and end_epoch aren't currently used but
-thought they might be important in the future
-
-
-
-
-
-
+4i) It would probably be useful to have tests that use channels other than 0, for example checking that z_maker
+produces the right data. With the resources I currently have available I cannot do this myself.

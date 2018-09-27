@@ -1,5 +1,5 @@
 This program was developed as an extension of code developed my Dave Tiddeman of the Met Office's Aerosol Group.
-The file GUI.py was was created to aid in the development of a GUI for viewing of data from a LIDAR tool which the
+The file GUI.py was created to aid in the development of a GUI for viewing of data from a LIDAR tool, which the
 Met Office has access to. LIDAR stands for Light Detection and Ranging, the tool the Met Office have access to is
 mounted on an aeroplane which aims laser light beams at the ground and determines what is below the plane based on
 how much light is reflected back.
@@ -36,7 +36,7 @@ Once your environment is set up the file GUI.py and test_GUI.py can be ran from 
 ran using the command "pytest test_GUI.py" the flag -v can be useful in this instance. The tests should take around
 30 seconds to run.
 
-Below are key points to undertand when running GUI.py:
+Below are key points to understand when running GUI.py:
 
 1. Running the default option of "python GUI.py" should take about 4 seconds to produce a figure.
 2. The default settings plots a graph representing the lidar data from the file
@@ -44,9 +44,11 @@ metoffice-lidar_faam_20150807_r0_B920_raw.nc, it plots data between 14:24:01 and
 3. It is possible to set several options for the program, information on these options can be found by typing
 "python GUI.py -h"
 4. The sample data is extremely large and certain options can result in a severe run time.
-5. Setting the the start and end to be an hour apart will result in the code taking 20 seconds to plot a graph.
+
+5. Setting the start and end to be an hour apart will result in the code taking 20 seconds to plot a graph.
 6. Setting the plot_choice to PCOLOR will result in it taking 50 seconds to produce a graph with the default data
 range. Given that this is a 7 minute interval it is not recommended to use PCOLOR for larger ranges.
+
 7. On the plot there are 'Next' and 'Previous' buttons. This will replot the data 100 "moments" further along (this
 corresponds to 3.5 minutes on average). Pressing 'Next' or 'Previous' completely reruns the calculations and plots, so it
 will take the same amount of time as your original command call. Hence it's a good idea to not plot a wide range
@@ -54,17 +56,13 @@ of data if you are going to use the Next and Previous buttons.
 8. Other command line options include the channel. This corresponds to a channel within the LIDAR measuring tool that
 was used to create the data. Changing the channel from 0 to 1 or 2 will result in other data being plotted.
 9. It is possible to set the date at the command line, however this is not recommended. Both the sample data files
-have data restricted to a single day, which the program finds automatically. The date option was included incase
+have data restricted to a single day, which the program finds automatically. The date option was included in case
 other files from the Met Office have data from several dates. Setting the date with the data available will either
 do nothing, raise a warning or raise an error.
 10a) The file metoffice-lidar_faam_20150807_r0_B920_raw.nc has data from the times 11:31:15 to 18:24:38. Therefore
 start and end should be set to between these limits. This data was collected on 7 August 2015.
 10b) The file metoffice-lidar_faam_20150812_r0_B924_raw.nc has data from the times 13:54:27 to 19:01:35. Therefore
 start and end should be set to between these limits. This data was collected on 12 August 2015.
-11. As oart of the Next and Previous method the colorbar of the graph is deleted and replotted. For some reason this
+11. As part of the Next and Previous method the colorbar of the graph is deleted and replotted. For some reason this
 does not properly work with the contourf plot_option. Instead the graph gets compressed into a smaller and smaller
 space.
-
-
-
-
