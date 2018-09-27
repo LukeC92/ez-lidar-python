@@ -1,3 +1,14 @@
+# This file was developed by Luke Carroll for the CO880 module at the University of Kent. It is an extension of code
+# developed between the Met Office and the National Centre for Atmospheric Science.
+#
+# This script is intended as a starting point for the development of a GUI to view LIDAR data within the Met Office.
+# Various tools have been written to process the data from sample netCDF files and plot it in a useful manner.
+# Some of the code is included to demonstrate possible tools that could be used, including possible drawbacks.
+# Some particular options are included to show their inappropriateness and should not be run, they have been discussed
+# further in the documentation.
+#
+
+
 # pcolor, pcolormesh, contour and contourf all seem relatively capable of plotting the data. My current
 # favourite is pcolormesh cause it's faster than some and looks decent. I seem to remember contour not doing
 # the colorbar properly.

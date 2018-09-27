@@ -11,8 +11,10 @@ of the code relies on these data files being in the same folder as GUI.py.
 The files GUI.py, test_GUI.py, environment.yml, conda-spec-file.txt, FUTURE_DEVELOPMENTS.txt and INSTRUCTIONS.txt were
 all completely written by me Luke Carroll for the module CO880 at the University of Kent. The rest of the files were
 created by the Met Office in collaboration with the National Centre for Atmospheric Science. I did change an import in
-the file lidar_aux.py and an import in lidar_raw.py. These changes were to make the code compatible with Python 3, the
-full changes can be seen at https://github.com/LukeC92/ez-lidar-python/commit/4b3003d29a7f53106461d976e9dbeb98b1b13954
+the file lidar_aux.py and an import in lidar_raw.py. These changes were to make the code compatible with Python 3. I
+also changed line 89 in lidar.py from 'mo=re.search('[abcdABCD]\d\d\d.',data)' to
+'mo=re.search(r'[abcdABCD]\d\d\d.',data)'. This change was to avoid a deprecation warning. All of the changes can be
+seen at https://github.com/LukeC92/ez-lidar-python/tree/guiDev2 .
 
 
 
@@ -55,11 +57,11 @@ was used to create the data. Changing the channel from 0 to 1 or 2 will result i
 have data restricted to a single day, which the program finds automatically. The date option was included incase
 other files from the Met Office have data from several dates. Setting the date with the data available will either
 do nothing, raise a warning or raise an error.
-
-10a.) The file ddajskdma; has data from the times fsdfsdj to asbasda. Therefore start and end should be set to be
-between them.
-
-11.) As oart of the Next and Previous method the colorbar of the graph is deleted and replotted. For some reason this
+10a) The file metoffice-lidar_faam_20150807_r0_B920_raw.nc has data from the times 11:31:15 to 18:24:38. Therefore
+start and end should be set to between these limits. This data was collected on 7 August 2015.
+10b) The file metoffice-lidar_faam_20150812_r0_B924_raw.nc has data from the times 13:54:27 to 19:01:35. Therefore
+start and end should be set to between these limits. This data was collected on 12 August 2015.
+11. As oart of the Next and Previous method the colorbar of the graph is deleted and replotted. For some reason this
 does not properly work with the contourf plot_option. Instead the graph gets compressed into a smaller and smaller
 space.
 

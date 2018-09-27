@@ -1,11 +1,11 @@
-import lidar
+# import lidar
 import GUI
 import pytest
 import argparse
-import matplotlib.pyplot as plt
-import warnings
+# import matplotlib.pyplot as plt
+# import warnings
 import numpy
-from datetime import datetime, time, timezone
+from datetime import datetime
 
 @pytest.fixture
 def processor_setup():
@@ -37,6 +37,10 @@ def test_processor_channel_error():
         GUI.GuiProcessor(channel = 5)
     with pytest.raises(ValueError, match="FOOBAR is not a valid channel. channel must be one of {0, 1, 2}."):
         GUI.GuiProcessor(channel ="FOOBAR")
+
+def test_processor_date_warning():
+    with pytest.warns(Warning, match='A date has been provided without any times, the date will be ignored.'):
+        GUI.GuiProcessor(date_string="7/8/2015")
 
 def test_timestamp_maker_valid(processor_setup):
     assert processor_setup.timestamp_maker("15:30:00") == 1438961400.0
@@ -118,7 +122,7 @@ def test_next():
     it is closed.
     """
     """
-    :return: 
+    :return:
     """
     processor = GUI.GuiProcessor(start_string="18:11:28", end_string="18:18:29",
                                  file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
@@ -143,7 +147,7 @@ def test_prev():
     it is closed.
     """
     """
-    :return: 
+    :return:
     """
     processor = GUI.GuiProcessor(start_string="11:37:19", end_string="13:5:54",
                                  file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
@@ -301,4 +305,3 @@ def test_date_type_invalid():
         GUI.date_type(invalid_dates[34])
     with pytest.raises(argparse.ArgumentTypeError, match = "Please enter a valid date in the format DD/MM/YYYY."):
         GUI.date_type(invalid_dates[35])
-

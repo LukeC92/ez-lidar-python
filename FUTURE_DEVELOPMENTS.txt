@@ -16,6 +16,9 @@ perhaps it's not worth letting the user specify the data. Perhaps the date shoul
 1d) As oart of the Next and Previous method the colorbar of the graph is deleted and replotted. For some reason this
 does not properly work with the contourf plot_option. Instead the graph gets compressed into a smaller and smaller
 space. If contourf is a desired means of plotting, this is an issue that may need to be addressed.
+1e) The start_timestamp and end_timestamp fields are not currently used anywhere. I defined them as fields because
+I thought they might be useful at some point. Unless a usage arises it might make sense to change them to local
+variables.
 
 2. Command line
 2a) Perhaps when the user first opens the data file they could be shown the period the data covers. Then they will
@@ -35,6 +38,7 @@ the plotting and data processing even further.
 3e) I have set the default moments in GUI_processor to be 1000 and 1200. I've done this because it gives a good range
 of normal data, without any nan values. However it may be different defaults would be more suitable for the Met
 Office usage.
+3f) Some of the imports in the pre-existing code are not used, perhaps it would be worth removing them.
 
 4. Testing, Errors and Warnings
 4a) Some of the errors and warnings within the code might be better using the "try else" format rather than the
