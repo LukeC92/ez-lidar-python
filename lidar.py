@@ -86,7 +86,7 @@ l=lidar.lidar_live('/home/h05/frti/public_html/lidar/',from_rawfolder='/data/loc
             self.ncfolder=""
         if(type(data)==str):
             if(self.fltno=='XXXX'):
-                mo=re.search('[abcdABCD]\d\d\d.',data)
+                mo=re.search(r'[abcdABCD]\d\d\d.',data)
                 if(mo):
                     self.fltno=mo.group()[:-1]
             if(data.endswith(".nc")):
