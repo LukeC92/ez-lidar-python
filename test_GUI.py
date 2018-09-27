@@ -9,14 +9,14 @@ from datetime import datetime, time, timezone
 
 @pytest.fixture
 def processor_setup():
-    return GUI.GUI_processor(start_string="15:00:00", end_string="15:30:00",
-                             file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
+    return GUI.GuiProcessor(start_string="15:00:00", end_string="15:30:00",
+                            file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
 
 
 #lidar_data = lidar.lidar('metoffice-lidar_faam_20150807_r0_B920_raw.nc')
 
 def test_processor_default():
-    processor = GUI.GUI_processor()
+    processor = GUI.GuiProcessor()
     assert processor.length == 7150
     assert processor.date_dt == datetime.utcfromtimestamp(1438947075.0).date()
     assert processor.start_moment == 1000
@@ -28,15 +28,15 @@ def test_processor_default():
 
 def test_processor_plot_choice_error():
     with pytest.raises(ValueError, match="FOOBAR is not a valid plot choice. plot_choice must be one of"):
-        GUI.GUI_processor(plot_choice="FOOBAR")
+        GUI.GuiProcessor(plot_choice="FOOBAR")
     with pytest.raises(ValueError, match="20 is not a valid plot choice. plot_choice must be one of"):
-        GUI.GUI_processor(plot_choice=20)
+        GUI.GuiProcessor(plot_choice=20)
 
 def test_processor_channel_error():
     with pytest.raises(ValueError, match="5 is not a valid channel. channel must be one of {0, 1, 2}."):
-        GUI.GUI_processor(channel = 5)
+        GUI.GuiProcessor(channel = 5)
     with pytest.raises(ValueError, match="FOOBAR is not a valid channel. channel must be one of {0, 1, 2}."):
-        GUI.GUI_processor(channel = "FOOBAR")
+        GUI.GuiProcessor(channel ="FOOBAR")
 
 def test_timestamp_maker_valid(processor_setup):
     assert processor_setup.timestamp_maker("15:30:00") == 1438961400.0
@@ -120,8 +120,8 @@ def test_next():
     """
     :return: 
     """
-    processor = GUI.GUI_processor(start_string="18:11:28", end_string="18:18:29",
-                             file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
+    processor = GUI.GuiProcessor(start_string="18:11:28", end_string="18:18:29",
+                                 file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
     processor.plotter()
     assert processor.start_moment == 6775
     assert processor.end_moment == 6975
@@ -145,8 +145,8 @@ def test_prev():
     """
     :return: 
     """
-    processor = GUI.GUI_processor(start_string="11:37:19", end_string="13:5:54",
-                             file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
+    processor = GUI.GuiProcessor(start_string="11:37:19", end_string="13:5:54",
+                                 file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc')
     processor.plotter()
     assert processor.start_moment == 175
     assert processor.end_moment == 375

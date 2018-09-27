@@ -1,65 +1,81 @@
-The plotter could check to see if both the start datetime and the end datetime are both before or both after the data
-collection interval. If this is the case then an exception could be thrown to indicate this.
+This project was developed as a starting point for the Met Office Aerosol group. The intention is for Met Office
+scientists to further develop upon the ideas and tools introduced in this code and produce a full GUI suitable for
+their LIDAR experiments. As such, below I have discussed ideas for future developments worth pursuing, or key pieces
+of information which will be useful in the future.
 
-A way to make the date automatically fit whatever the data ha.
+1. GUI_processor
+1a) Currently GUI_processor will set any time before the first data collection to the 0th moment and any time after
+the final moment will be set to the final moment. If the start and end are both above or both below the experiment
+period, a clear error could be thrown.
+1b) Currently the GUI_processor's fields can be set by anyone. Hence the start and end moments might be set to invalid
+values without any checks being carried out. For example it might be possible to set the start being set after the end
+resulting in a confusing / vague error message. Perhaps restricting premissions would be worthwhile, to ensure fields
+aren't changed to something nonsensical. Though this might go against Python's attitude towards private classes.
+1c) Does the date need to be managed in a different way? If all of the LIDAR eperiments will take place within 1 day,
+perhaps it's not worth letting the user specify the data. Perhaps the date should just be taken from the data.
+1d) As oart of the Next and Previous method the colorbar of the graph is deleted and replotted. For some reason this
+does not properly work with the contourf plot_option. Instead the graph gets compressed into a smaller and smaller
+space. If contourf is a desired means of plotting, this is an issue that may need to be addressed.
 
-Maybe make date a global variable?
-When the data is first opened give an indication of what the date and time range would be.
+2. Command line
+2a) Perhaps when the user first opens the data file they could be shown the period the data covers. Then they will
+know what a valid start and end time would be.
 
-Maybe stop LIDAR printing all of its information to the command line every time it is defined.
+3. General
+3a) Currently when lidar data is assigned all of its fields from lidar.py are printed out. It might be worth
+suppressing this behaviour.
+3b) I've defined methods date_type and time_type for the use of filtering command line arguments. Would it be worth
+converting them into general Python types? The regular expressions could be useful elsewhere when we want a string
+in the date or time format.
+3c) The date_type always allows 29 February as a valid date, even if the year isn't a leap year. It might be worth
+changing that restriction to be more intelligent. It can probably be done with mathematics and regular expressions,
+however mayber there is a more effecient way.
+3d) Future developers may find they require a different structure for their purposes. Maybe one could separate
+the plotting and data processing even further.
+3e) I have set the default moments in GUI_processor to be 1000 and 1200. I've done this because it gives a good range
+of normal data, without any nan values. However it may be different defaults would be more suitable for the Met
+Office usage.
 
-A method to change the start and the end of the GUI_processor which includes a check to make sure they're in the
-right order.
+4. Testing, Errors and Warnings
+4a) Some of the errors and warnings within the code might be better using the "try else" format rather than the
+"if else" format.
+4b) The checks on indices use modular arithmetic to account for negative indices. There might be a more effecient way
+to do this, maybe simply ensuring all indices are non-negative would be more effecient.
+4c) All of the unit tests only use one of the sample files currently. Perhaps it would be worth writing tests
+using the other file too.
+4d) The tests of the Next and Previous buttons are largely fine. However it would be good to test what they do when
+they reach the end of the data. For example it would be good to test that a tkinter messagebox appears and assert
+what the messagebox should say.
+4e) Perhaps some of the larger "processin" methods like z_maker and height_maker could be tested more thoroughly.
+I don't have a reliable way to store what their results should be. Also due to their size, the tests could start
+to take a very long time.
+4f) It should be possible to test the plotter method. Matplotlib allows for image comparison tests. If this isn't
+possible then simply checking that a figure is shown after plotter is run, would still be useful information. Though
+if we were to test all its functionality that could take a long time.
+4g) There might be more effecient ways to organise the unit tests. For example some of the tests could share a
+different setup function.
+4h) If the users a start but not an end (or vice versa) it might be good to check these values early on. E.g. compare
+the user entered values to their default partners and see if it makes sense. Though it may be the existing checks are
+already sufficient.
 
-be able to change moment and plot again
-start making tests
-
-the date shouldn't be able to change? Or if the it does then everything else needs to update?
-Really the date probably corresponds to a data file.
 
 
-Make string type and actual type that can be used elsewhere.
 
-Rewrite the epoch errors so they start with the explanation.
 
-some of the errors might be better in the try else format
 
-make the addition be to the modulo
-set a limit using modulo
-feed processor into iterator mayber define it within processor probably not.
 
-clear the colorbar as part of the plotter function.
 
-use jupyter to look at lengths
 
-the way the code is ordered it gets rid of the colorbar even while the pop up is up.
 
-make tests using the other sample file
 
-if contourf is desired could look into making colorbar behave
 
-test errors raised by processor init
-test that next and prev change start and end in the correct ways
 
-test that default lidar_data is  particular thing "==" isn't working
 
 state somewhere that start_epoch and end_epoch aren't currently used but
 thought they might be important in the future
 
 
-test init warnings and errors
-
-why does the order of the plot_choice error change while the channel error stays the same.
 
 
-organise the tests a bit more
-
-maybe generate plot could be placed somewhere else
-let the plotting be handled separately so the data processiing can be done first
-
-
-make a setup for z so time and height are quicker?
-
-capture message box
 
 

@@ -15,42 +15,51 @@ from datetime import datetime, timezone
 import argparse
 import re
 import warnings
-import win32api
 import tkinter as tk
 from tkinter import messagebox
 
-PLOT_OPTIONS =  {'LINEAR', 'CONTOURF', 'PCOLOR', 'PCOLORMESH'}
+PLOT_OPTIONS = {'LINEAR', 'CONTOURF', 'PCOLOR', 'PCOLORMESH'}
 VALID_CHANNELS = {0, 1, 2}
 time_pattern = re.compile(r"([0-1]?\d|2[0-3]):([0-5]?\d):(\d?\d)")
 height_correction = 1.5 * np.arange(12148)
 
-class GUI_processor:
+
+class GuiProcessor:
+    """
+    A class containing key features for the plotting and manipulation of lidar data.
+
+    """
     def __init__(self, file_path=None, start_string=None, end_string=None,
                  date_string=None, channel=0, plot_choice='PCOLORMESH'):
         """
         The default folder should be 'metoffice-lidar_faam_20150807_r0_B920_raw.nc'
         """
-        if file_path == None:
+        if file_path is None:
             file_path = 'metoffice-lidar_faam_20150807_r0_B920_raw.nc'
 
-        self.generatePlot()
+        if date_string is not None and (start_string is None and end_string is None):
+            warnings.warn("A date has been provided without any times, the date will be ignored.", Warning)
+
+        self.generate_plot()
         self.lidar_data = lidar.lidar(file_path)
         self.length = self.lidar_data['Time'][:].data.shape[0]
 
-        if date_string == None:
+        if date_string is None:
             time_0 = self.lidar_data['Time'][0]
             self.date_dt = datetime.utcfromtimestamp(time_0.item()).date()
         else:
+            print("string not none")
             self.date_dt = datetime.strptime(date_string, "%d/%m/%Y").date()
+            print(self.date_dt)
 
-        if start_string == None:
+        if start_string is None:
             self.start_timestamp = self.lidar_data['Time'][0]
             self.start_moment = 1000
         else:
             self.start_timestamp = self.timestamp_maker(start_string)
             self.start_moment = self.moment_maker(self.start_timestamp)
 
-        if end_string == None:
+        if end_string is None:
             self.end_timestamp = self.lidar_data['Time'][-1]
             self.end_moment = 1200
         else:
@@ -63,24 +72,32 @@ class GUI_processor:
         if plot_choice in PLOT_OPTIONS:
             self.plot_choice = plot_choice
         else:
-            raise ValueError("{} is not a valid plot choice. plot_choice must be one of {}.".format(plot_choice, PLOT_OPTIONS))
+            raise ValueError(
+                "{} is not a valid plot choice. plot_choice must be one of {}.".format(plot_choice, PLOT_OPTIONS))
 
         if channel in VALID_CHANNELS:
             self.channel = channel
         else:
             raise ValueError("{} is not a valid channel. channel must be one of {}.".format(channel, VALID_CHANNELS))
 
-    def generatePlot(self):
+    # noinspection PyAttributeOutsideInit
+    def generate_plot(self):
         """
         Sets up the plotting space.
         """
+        # noinspection PyAttributeOutsideInit,PyAttributeOutsideInit
         self.fig, self.ax = plt.subplots()
         plt.subplots_adjust(bottom=0.2)
+        # noinspection PyAttributeOutsideInit
         self.callback = Index(self)
+        # noinspection PyAttributeOutsideInit
         self.axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
+        # noinspection PyAttributeOutsideInit
         self.axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
+        # noinspection PyAttributeOutsideInit
         self.bnext = Button(self.axnext, 'Next')
         self.bnext.on_clicked(self.callback.next)
+        # noinspection PyAttributeOutsideInit
         self.bprev = Button(self.axprev, 'Previous')
         self.bprev.on_clicked(self.callback.prev)
 
@@ -92,10 +109,10 @@ class GUI_processor:
         """
         if not isinstance(time_string, str):
             raise TypeError("{} is not a string. Please ensure time_string is a string".format(time_string) +
-            " in the format HH:MM:SS.")
+                            " in the format HH:MM:SS.")
         if not time_pattern.fullmatch(time_string):
             raise ValueError("'{}' is not in the right format. Please ensure time_string is a".format(time_string) +
-            " string in the format HH:MM:SS.")
+                             " string in the format HH:MM:SS.")
         time_dt = datetime.strptime(time_string, "%H:%M:%S").time()
         date_dt = self.date_dt
         datetime_dt = datetime.combine(date_dt, time_dt)
@@ -127,32 +144,34 @@ class GUI_processor:
     def start_end_maker(self, start_string, end_string):
         if not isinstance(start_string, str):
             raise TypeError("{} is not a string. Please ensure start_string is a string".format(start_string) +
-            " in the format HH:MM:SS.")
+                            " in the format HH:MM:SS.")
         if not time_pattern.fullmatch(start_string):
             raise ValueError("'{}' is not in the right format. Please ensure start_string is a".format(start_string) +
-            " string in the format HH:MM:SS.")
+                             " string in the format HH:MM:SS.")
         if not isinstance(end_string, str):
             raise TypeError("{} is not a string. Please ensure end_string is a string".format(end_string) +
-            " in the format HH:MM:SS.")
+                            " in the format HH:MM:SS.")
         if not time_pattern.fullmatch(end_string):
             raise ValueError("'{}' is not in the right format. Please ensure end_string is a".format(end_string) +
-            " string in the format HH:MM:SS.")
-        start_e = self.timestamp_maker(start_string)
-        end_e = self.timestamp_maker(end_string)
-        start = self.moment_maker(start_e)
-        end = self.moment_maker(end_e)
-        return (start, end)
+                             " string in the format HH:MM:SS.")
+        start_timestamp = self.timestamp_maker(start_string)
+        print(start_timestamp)
+        end_timestamp = self.timestamp_maker(end_string)
+        print(end_timestamp)
+        start = self.moment_maker(start_timestamp)
+        end = self.moment_maker(end_timestamp)
+        return start, end
 
     def z_maker(self, x=None, y=None, channel=None):
         """"
         using the mask option might avoid misrepresenting data, but it causes some warnings when using
         pcorlormeshthe warnings don't seem to happen with pcorlor, not sure about contourf
         """
-        if x == None:
+        if x is None:
             x = self.start_moment
-        if y == None:
+        if y is None:
             y = self.end_moment
-        if channel == None:
+        if channel is None:
             channel = self.channel
         data = self.lidar_data.profile[channel][x:y].data.clip(0)
         data_m = ma.masked_invalid(data)
@@ -210,9 +229,9 @@ class GUI_processor:
             raise ValueError("channel must be one of {}.".format(VALID_CHANNELS))
 
         length = self.lidar_data['Time'][:].data.shape[0]
-        if start_moment == None:
+        if start_moment is None:
             start_moment = self.start_moment
-        if end_moment == None:
+        if end_moment is None:
             end_moment = self.end_moment
         if start_moment % length >= end_moment % length:
             raise ValueError("End must be greater than start.")
@@ -220,7 +239,7 @@ class GUI_processor:
         self.ax.cla()
         plt.sca(self.ax)
 
-        z =  self.z_maker(start_moment, end_moment, channel)
+        z = self.z_maker(start_moment, end_moment, channel)
         time = dates.epoch2num(self.lidar_data['Time'][start_moment:end_moment].data)
         altitude = self.lidar_data['Altitude (m)'][start_moment:end_moment].data
         height = self.height_maker(start_moment, end_moment, z)
@@ -246,8 +265,9 @@ class GUI_processor:
             contour_p = plt.pcolormesh(time, height, z, norm=colors.LogNorm(vmin=0.000001, vmax=z.max()))
 
         line_p = plt.plot(time, altitude, color='black', linewidth=2)
-        myFmt = dates.DateFormatter('%H:%M')
-        self.ax.xaxis.set_major_formatter(myFmt)
+        my_fmt = dates.DateFormatter('%H:%M')
+        self.ax.xaxis.set_major_formatter(my_fmt)
+        # noinspection PyAttributeOutsideInit
         self.cb = plt.colorbar(contour_p)
 
 
@@ -256,17 +276,18 @@ class Index(object):
         self.processor = processor
 
     def next(self, event):
-        if (self.processor.end_moment % self.processor.length) >= (self.processor.length-1):
+        if (self.processor.end_moment % self.processor.length) >= (self.processor.length - 1):
             root = tk.Tk()
             root.withdraw()
             messagebox.showwarning('End of Data', "You have reached the end of the data.")
-            #win32api.MessageBox(0, 'You have reache
+            # win32api.MessageBox(0, 'You have reache
             # d the end of the data.', 'End of Data')
         else:
-            #self.processor = processor
-            if self.processor.length-1 > self.processor.end_moment % self.processor.length > self.processor.length-101:
+            # self.processor = processor
+            if self.processor.length - 1 > self.processor.end_moment % self.processor.length > self.processor.length - 101:
                 self.processor.start_moment = (self.processor.start_moment % self.processor.length) + \
-                                      ((self.processor.length - 1) - (self.processor.end_moment % self.processor.length))
+                                              ((self.processor.length - 1) - (
+                                                          self.processor.end_moment % self.processor.length))
                 self.processor.end_moment = self.processor.length - 1
             else:
                 self.processor.start_moment = self.processor.start_moment % self.processor.length + 100
@@ -276,16 +297,16 @@ class Index(object):
             plt.draw()
 
     def prev(self, event):
-        #self.processor = processor
-        if (self.processor.start_moment % self.processor.length) <= (0):
+        # self.processor = processor
+        if (self.processor.start_moment % self.processor.length) <= 0:
             root = tk.Tk()
             root.withdraw()
             messagebox.showwarning('End of Data', "You have reached the end of the data.")
-            #win32api.MessageBox(0, 'You have reached the end of the data.', 'End of Data')
+            # win32api.MessageBox(0, 'You have reached the end of the data.', 'End of Data')
         else:
             if 0 < self.processor.start_moment % self.processor.length < 100:
                 self.processor.end_moment = (self.processor.end_moment % self.processor.length) - \
-                                    (self.processor.start_moment % self.processor.length)
+                                            (self.processor.start_moment % self.processor.length)
                 self.processor.start_moment = 0
             else:
                 self.processor.start_moment = self.processor.start_moment % self.processor.length - 100
@@ -302,6 +323,7 @@ def time_type(s):
     if not time_pattern.fullmatch(s):
         raise argparse.ArgumentTypeError("Please enter a valid time in the format HH:MM:SS.")
     return s
+
 
 def date_type(s):
     """
@@ -338,10 +360,10 @@ if __name__ == '__main__':
     channel = args.channel
 
     #    def __init__(self, file_path='metoffice-lidar_faam_20150807_r0_B920_raw.nc', start_string=None, end_string=None,
-                 #date_string=None, channel=0):
+    # date_string=None, channel=0):
 
-    processor = GUI_processor(file_path=file_path, start_string=start_string, end_string=end_string,
-                              date_string=date_string, channel=channel, plot_choice=plot_choice)
+    processor = GuiProcessor(file_path=file_path, start_string=start_string, end_string=end_string,
+                             date_string=date_string, channel=channel, plot_choice=plot_choice)
     processor.plotter(channel=channel, plot_choice=plot_choice)
 
     print("Near the end")

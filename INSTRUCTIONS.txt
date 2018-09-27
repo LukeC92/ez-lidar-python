@@ -1,0 +1,68 @@
+This program was developed as an extension of code developed my Dave Tiddeman of the Met Office's Aerosol Group.
+The file GUI.py was was created to aid in the development of a GUI for viewing of data from a LIDAR tool which the
+Met Office has access to. LIDAR stands for Light Detection and Ranging, the tool the Met Office have access to is
+mounted on an aeroplane which aims laser light beams at the ground and determines what is below the plane based on
+how much light is reflected back.
+
+Sample data files are provided along with this code in the netCDF format. They sample files are titled
+metoffice-lidar_faam_20150807_r0_B920_raw.nc and metoffice-lidar_faam_20150812_r0_B924_raw.nc. The default behaviour
+of the code relies on these data files being in the same folder as GUI.py.
+
+The files GUI.py, test_GUI.py, environment.yml, conda-spec-file.txt, FUTURE_DEVELOPMENTS.txt and INSTRUCTIONS.txt were
+all completely written by me Luke Carroll for the module CO880 at the University of Kent. The rest of the files were
+created by the Met Office in collaboration with the National Centre for Atmospheric Science. I did change an import in
+the file lidar_aux.py and an import in lidar_raw.py. These changes were to make the code compatible with Python 3, the
+full changes can be seen at https://github.com/LukeC92/ez-lidar-python/commit/4b3003d29a7f53106461d976e9dbeb98b1b13954
+
+
+
+-----------------------------------------
+Instructions for Best Running of Program:
+-----------------------------------------
+This program depends on a few key packages. A full break down of the environments I used can be found in
+environment.yml and conda-spec-file.txt. To best replicate the environments for this software I would recommend
+Anaconda (shortened to conda), the Python environment manager. With conda installed the my envrionment can be
+replicated with the following commands.
+
+        conda create --name lidarENV python=3.6 matplotlib=2.2 numpy=1.14
+        conda install netCDF4
+        conda install scipy
+        conda install jupyter
+        conda install pytest
+
+Once your environment is set up the file GUI.py and test_GUI.py can be ran from the command line. test_GUI.py can be
+ran using the command "pytest test_GUI.py" the flag -v can be useful in this instance. The tests should take around
+30 seconds to run.
+
+Below are key points to undertand when running GUI.py:
+
+1. Running the default option of "python GUI.py" should take about 4 seconds to produce a figure.
+2. The default settings plots a graph representing the lidar data from the file
+metoffice-lidar_faam_20150807_r0_B920_raw.nc, it plots data between 14:24:01 and 14:31:00 on 7 August 2015.
+3. It is possible to set several options for the program, information on these options can be found by typing
+"python GUI.py -h"
+4. The sample data is extremely large and certain options can result in a severe run time.
+5. Setting the the start and end to be an hour apart will result in the code taking 20 seconds to plot a graph.
+6. Setting the plot_choice to PCOLOR will result in it taking 50 seconds to produce a graph with the default data
+range. Given that this is a 7 minute interval it is not recommended to use PCOLOR for larger ranges.
+7. On the plot there are 'Next' and 'Previous' buttons. This will replot the data 100 "moments" further along (this
+corresponds to 3.5 minutes on average). Pressing 'Next' or 'Previous' completely reruns the calculations and plots, so it
+will take the same amount of time as your original command call. Hence it's a good idea to not plot a wide range
+of data if you are going to use the Next and Previous buttons.
+8. Other command line options include the channel. This corresponds to a channel within the LIDAR measuring tool that
+was used to create the data. Changing the channel from 0 to 1 or 2 will result in other data being plotted.
+9. It is possible to set the date at the command line, however this is not recommended. Both the sample data files
+have data restricted to a single day, which the program finds automatically. The date option was included incase
+other files from the Met Office have data from several dates. Setting the date with the data available will either
+do nothing, raise a warning or raise an error.
+
+10a.) The file ddajskdma; has data from the times fsdfsdj to asbasda. Therefore start and end should be set to be
+between them.
+
+11.) As oart of the Next and Previous method the colorbar of the graph is deleted and replotted. For some reason this
+does not properly work with the contourf plot_option. Instead the graph gets compressed into a smaller and smaller
+space.
+
+
+
+
